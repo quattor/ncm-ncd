@@ -1,0 +1,5 @@
+/var/log/ncm/*.log {
+    weekly
+    notifempty
+    missingok
+}

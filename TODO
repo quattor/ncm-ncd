@@ -1,0 +1,21 @@
+TODO list for the quattro 'ncd' tool
+====================================
+
+
+To be done:
+-----------
+
+- application lock (CAF::Lock)
+- automated pre-requisite component inclusion
+
+In progress:
+------------
+
+
+Done:
+-----
+
+
+------------------------------------------------------------------------------
+
+German Cancio <German.Cancio@cern.ch>

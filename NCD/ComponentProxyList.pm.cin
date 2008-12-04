@@ -1,0 +1,406 @@
+#
+# NCD ComponentProxyList class
+#
+# Written by German Cancio <German.Cancio@cern.ch>
+#
+# (C) 2003 German Cancio / CERN & EU DataGrid http://www.edg.org
+#
+
+package NCD::ComponentProxyList;
+
+use strict;
+use vars qw(@ISA $this_app);
+use CAF::ReporterMany;
+use LC::Exception qw (SUCCESS throw_error);
+use CAF::Object;
+use NCD::ComponentProxy;
+
+*this_app = \$main::this_app;
+
+
+@ISA=qw(CAF::Object CAF::Reporter);
+
+
+my $ec=LC::Exception::Context->new->will_store_errors;
+
+
+
+=pod
+
+=head1 NAME
+
+NCD::ComponentProxyList - component proxy list class
+
+=head1 SYNOPSIS
+
+
+=head1 INHERITANCE
+
+  CAF::Object, CAF::Reporter
+
+=head1 DESCRIPTION
+
+Instantiation, execution and management of ComponentProxy object instances.
+
+=over
+
+=back
+
+=head1 AUTHOR
+
+German Cancio <German.Cancio@cern.ch>
+
+=head1 VERSION
+
+$Id: ComponentProxyList.pm.cin,v 1.17 2008/10/21 15:54:53 munoz Exp $
+
+=cut
+
+
+#------------------------------------------------------------
+#                      Public Methods/Functions
+#------------------------------------------------------------
+
+=pod
+
+=back
+
+=head2 Public methods
+
+=over 4
+
+=cut
+
+
+sub reportComponents {
+  my $self=shift;
+
+  $self->report('active components found inside profile /software/components:');
+  $self->report(sprintf("%-15s%-7s%-29s%-29s","name","file?","predeps","postdeps"));
+  $self->report("-------------------------------------------------------------------");
+  my $comp;
+  foreach $comp (@{$self->{'CLIST'}}) {
+    $self->report(sprintf("%-15s%-7s%-29s%-29s",$comp->name().':',
+		  ($comp->hasFile() ? "yes":"no"),
+		  join(',',@{$comp->getPreDependencies()}),
+		  join(',',@{$comp->getPostDependencies()})
+		  ));
+  }
+  return SUCCESS;
+}
+
+
+
+sub executeConfigComponents {
+  my $self=shift;
+
+  $self->info("executing configure on components....");
+  $self->report();
+
+  my %err_comps_list;
+  my %warn_comps_list;
+  my %global_status=(
+		     'ERRORS'=>0,
+		     'WARNINGS'=>0
+		    );
+
+  my $sortedList=$self->_sortComponents($self->{'CLIST'});
+  unless (defined $sortedList) {
+    $self->error("cannot sort components according to dependencies");
+    $global_status{'ERRORS'}++;
+  } else {
+    # execute now all components, leaving out ones with broken pre deps
+
+    my $OK=1;
+    my $FAIL=2;
+    my %exec_status=map {$_->name(),0} @{$sortedList};
+
+    my $comp;
+    foreach $comp (@{$sortedList}) {
+      $self->report();
+      $self->info('running component: '.$comp->name());
+      $self->report('---------------------------------------------------------');
+      my @broken_dep=();
+      my $predep;
+      foreach $predep (@{$comp->getPreDependencies()}) {
+	if (!$this_app->option('nodeps') &&
+	    $exec_status{$predep} != $OK) {
+	  push (@broken_dep,$predep);
+	  $self->debug(1, 'predependencies broken for component '.$comp->name().': '.$predep);
+	}
+      }
+      if (scalar @broken_dep) {
+	$self->error('cannot run component: '.$comp->name().
+		     ' as pre-dependencies failed: '.join(',',@broken_dep));
+	$global_status{'ERRORS'}++;
+	$err_comps_list{$comp->name()}=1;
+      } else {
+	my $ret=$comp->executeConfigure();
+	unless (defined $ret) {
+	  $self->error('cannot execute configure on component '.$comp->name());
+	  $global_status{'ERRORS'}++;
+	  $err_comps_list{$comp->name()}=1;
+	  $exec_status{$comp->name()}=$FAIL;
+	} else {
+	  if ($ret->{'ERRORS'}) {
+	    $err_comps_list{$comp->name()}=$ret->{'ERRORS'};
+	    $exec_status{$comp->name()}=$FAIL;
+	  } else {
+	    $exec_status{$comp->name()}=$OK;
+	  }
+	  if ($ret->{'WARNINGS'}) {
+	    $warn_comps_list{$comp->name()}=$ret->{'WARNINGS'};
+          }
+
+	  $global_status{'ERRORS'}   += $ret->{'ERRORS'};
+	  $global_status{'WARNINGS'} += $ret->{'WARNINGS'};
+	}
+      }
+    }
+  }
+
+  $global_status{'ERR_COMPS'}=\%err_comps_list;
+  $global_status{'WARN_COMPS'}=\%warn_comps_list;
+
+  return \%global_status;
+}
+
+
+
+
+sub executeUnconfigComponent {
+  my $self=shift;
+
+  my $comp=@{$self->{'CLIST'}}[0];
+
+  my %global_status=(
+		     'ERRORS'=>0,
+		     'WARNINGS'=>0
+		    );
+
+  unless (defined $comp) {
+    $self->error('could not instantiate component');
+    $global_status{'ERRORS'}++;
+  } else {
+    my $ret=$comp->executeUnconfigure();
+    unless (defined $ret) {
+      $self->error('cannot execute unconfigure on component '.$comp->name());
+      $global_status{'ERRORS'}++;
+    } else {
+      $self->report('unconfigure on component '.$comp->name().' executed, '.
+		    $ret->{'ERRORS'}. ' errors, '.
+		    $ret->{'WARNINGS'}. ' warnings');
+      $global_status{'ERRORS'}   += $ret->{'ERRORS'};
+      $global_status{'WARNINGS'} += $ret->{'WARNINGS'};
+    }
+  }
+  return \%global_status;
+}
+
+
+
+# protected methods
+
+
+# topological Sort
+# preliminary mkxprof based version, to be replaced by a
+# qsort call in the next alpha release.
+#
+sub _topoSort {
+  # Topological sort (Aho, Hopcroft & Ullman)
+
+  my $self=shift;
+  my $v = shift;         # Current vertex
+  my $after = shift;     # Hash of component followers
+  my $visited = shift;   # Visited markers
+  my $active = shift;    # Components on this path (to check for loops)
+  my $stack = shift;     # Output stack
+  my $depth = shift;     # Depth
+
+  return SUCCESS if ($visited->{$v});
+  $visited->{$v} = $active->{$v} = $depth;
+  foreach my $n (keys(%{$after->{$v}})) {
+    if ($active->{$n}) {
+      my @loop = sort { $active->{$a} <=> $active->{$b} } keys(%$active);
+      $self->error("dependency ordering loop detected: ",
+		join(' < ',(@loop,$n)));
+      return undef;
+    }
+    return undef unless 
+	($self->_topoSort($n,$after,$visited,$active,$stack,$depth+1));
+  }
+  delete $active->{$v}; unshift @$stack,($v);
+  return SUCCESS;
+}
+
+#
+# sort the components according to dependencies
+#
+sub _sortComponents {
+  my ($self,$unsortedcompProxyList)=@_;
+
+  $self->verbose("sorting components according to dependencies...");
+
+  my %comps;
+  %comps=map {$_->name(),$_} @$unsortedcompProxyList;
+  my $after={};
+  my $comp;
+  my $prev=undef;
+  foreach $comp (@$unsortedcompProxyList) {
+    my $name=$comp->name();
+    $after->{$name} ||= {};
+    my @pre=@{$comp->getPreDependencies()};
+    my @post=@{$comp->getPostDependencies()};
+    if (scalar(@pre)||scalar(@post)) {
+      foreach (@pre) {
+	unless (defined $comps{$_}) {
+	  unless ($this_app->option('nodeps')) {
+	    $self->error('pre-requisite for component "'.$name.'" does not exist: '.$_);
+	    return undef;
+	  }
+	} else {
+	  $after->{$_}->{$name}=1;
+	}
+      }
+      foreach (@post) {
+	unless (defined $comps{$_}) {
+	  unless ($this_app->option('nodeps')) {
+	    $self->error('pre-requisite for component "'.$name.'"  does not exist: '.$_);
+	    return undef;
+	  }
+	  $self->error('post-requisite for component  "'.$name.'" does not exist: '.$_);
+	  return undef;
+	}
+	$after->{$name}->{$_}=1;
+      }
+    } else {
+#      $after->{$prev}->{$name}=1 if (defined $prev);
+      $prev=$name;
+    }
+  }
+  my $visited={};
+  my $sorted=[()];
+  foreach my $c (sort keys (%$after)) {
+    unless ($self->_topoSort($c,$after,$visited,{},$sorted,1)) {
+      $self->error("cannot sort dependencies");
+      return undef;
+    }
+  }
+  my @sortedcompProxyList=map {$comps{$_}} @$sorted;
+  return \@sortedcompProxyList;
+}
+
+
+
+
+#
+# _getComponents(): boolean
+# instantiates the list of components specified in new(). If
+# the list is empty, returns all components flagged as 'active'
+#
+
+sub _getComponents {
+  my ($self,$list)=@_;
+
+  my @compnames=@{$self->{'NAMES'}};
+
+  unless (scalar (@compnames)) {
+    my $res=$self->{'CCM_CONFIG'}->getElement('/software/components');
+    unless (defined $res) {
+      $ec->ignore_error();
+      $self->error("no components found in profile");
+      return undef;
+    }
+    my $cname;
+    my %els=$res->getHash();
+    foreach $cname (keys %els) {
+      my $prop=$self->{'CCM_CONFIG'}->getElement('/software/components/'.$cname.'/active');
+      unless (defined $prop) {
+	$ec->ignore_error();
+	$self->warn('component '.$cname.
+		     " 'active' flag not found in node profile under /software/components/".$cname."/, skipping");
+	next;
+      } else {
+	if ($prop->getBooleanValue() eq 'true') {
+	  push(@compnames,$cname);
+	}
+      }
+    }
+    $self->verbose('active components found in profile: ');
+    $self->verbose('  '.join(',',@compnames));
+  }
+
+  unless (scalar @compnames) {
+    $self->error('no active components found in profile');
+    return undef;
+  }
+
+  if (defined $self->{'SKIP'}) {
+    if (grep ($_ eq $self->{'SKIP'}, @compnames)) {
+      $self->info('skip option set - skipping component: '.$self->{'SKIP'});
+      @compnames = grep ($_ ne $self->{'SKIP'}, @compnames);
+    } else {
+      $self->info('skip option set - but component to be skipped '.
+		  'not found in active list: '
+		  .$self->{'SKIP'});
+    }
+  }
+
+  my @comp_proxylist=();
+  my $cname;
+  foreach $cname (@compnames) {
+    my $comp_proxy=NCD::ComponentProxy->new($cname,$self->{'CCM_CONFIG'});
+    unless (defined $comp_proxy) {
+      $ec->ignore_error();
+      unless ($this_app->option('allowbrokencomps') eq 'yes') {
+	$self->error('cannot instantiate component: '.$cname);
+	return undef;
+      } else {
+	$self->warn('ignoring broken component: '.$cname);
+      }
+    } else {
+      push(@comp_proxylist,$comp_proxy);
+      my @pre=@{$comp_proxy->getPreDependencies()};
+      my @post=@{$comp_proxy->getPostDependencies()};
+      my $pp;
+      foreach $pp (@pre,@post) {
+	unless (grep {$pp eq $_} @compnames) {
+	  if ($this_app->option('autodeps') eq 'yes') {
+	    push(@compnames,$pp);
+	    $self->info("adding missing pre/post requisite component: ".$pp);
+	  }
+	}
+      }
+    }
+  }
+  $self->{'CLIST'} = \@comp_proxylist;
+  return SUCCESS;
+}
+
+
+
+=pod
+
+=head2 Private methods
+
+=item _initialize($skip,@comp_names)
+
+object initialization (done via new)
+
+=cut
+
+sub _initialize {
+  my ($self,$config,$skip,@names)=@_;
+  $self->{'CCM_CONFIG'}=$config;
+  $self->{'SKIP'}=$skip;
+  $self->{'NAMES'}=\@names;
+
+
+  return $self->_getComponents();
+}
+
+
+
+#+#############################################################################
+1;
+

@@ -1,0 +1,18 @@
+#
+# notd entries for NCM configure
+#
+
+ncm       {
+          runatcron=no
+          subatcron=yes
+          runatboot=yes
+          subatboot=yes
+          server=regis.cern.ch,notdserv.cern.ch,notdv2serv
+          exec=@QTTR_SBIN@/ncm_wrapper.sh
+          waittofin=yes
+}
+
+
+
+
+

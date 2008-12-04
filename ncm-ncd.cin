@@ -1,0 +1,676 @@
+#!@PERL_EXECUTABLE@ -w
+#
+#
+# ncd: Node Configuration Dispatcher - quattor project
+#
+# German Cancio <German.Cancio@cern.ch>
+#
+# $Id: ncm-ncd.cin,v 1.20 2007/12/21 14:55:50 gcancio Exp $
+#
+# Copyright (c) 2003 German Cancio / CERN and EU DataGrid.
+# For license conditions see http://www.eu-datagrid.org/license.html
+#
+
+
+=pod
+
+=head1 NAME
+
+ncm-ncd - Node Configuration Dispatcher
+      of the NCM (Node Configuration Management) subsystem
+
+      quattor toolsuite http://cern.ch/quattor
+
+=head1 SYNOPSIS
+
+ncm-ncd --configure   [options] [<component1> [<component2>] ...]
+ncm-ncd --unconfigure [options] component
+
+(See ncm-ncd --help for full list of options with default values.)
+
+=head1 DESCRIPTION
+
+The B<ncm-ncd> is the front end for invoking NCM configuration
+components. The B<ncm-ncd> is called with a list of components to be
+invoked as an argument. Based on this list, the B<ncd> looks up the
+inter-component dependencies, orders the components, and invokes each
+component sequentially.
+
+If no component is specified, the B<ncd> will invoke all
+components which are marked as active in the node configuration
+profile. These are considered to be the 'default' components to run.
+
+The B<ncd> can be executed manually, via B<cron>, or via the
+B<cdispd>.
+
+If a dependency is not fulfilled, the B<ncd> exits with an
+appropriate error message and return status.
+
+In case of deinstallation of a component using B<--unconfigure>,
+the B<ncd> is to be called with the component's name as a
+parameter.
+
+
+=head1 OPTIONS
+
+=over 4
+
+=item --configure
+
+run the 'configure' method for <component1,2..> (default option). For running configure on all components, use --configure --all.
+
+=item --all
+
+See above. Run --configure --all to run configure on all components.
+
+=item --skip <component>
+
+skip one component (only to be used with --all)
+
+=item --unconfigure
+
+run the 'unconfigure' method for <component>. Only one component can
+be unconfigured at a time.
+
+=item --logdir <dir>
+
+directory where to place ncm-ncd and component log files
+
+=item --retries <n>
+
+try 'n' times if locked (another ncm-ncd instance is running).
+
+=item --timeout <n>
+
+wait a maximum of 'n' seconds between retries.
+
+=item --ignorelock
+
+Ignore existing application lock. Use with care.
+
+=item --forcelock
+
+Take over application lock. Use with care.
+
+=item --useprofile <profile_id>
+
+use <profile_id> as NVA-API configuration profile ID (default: latest)
+
+=item --cache_root <directory>
+
+CCM cache root directory (optional, otherwise CCM default taken)
+
+=item --multilog
+
+use separate (per component) log files in log directory
+
+=item --nodeps
+
+ignore broken (pre/post) dependencies when invoking configure
+
+=item --autodeps
+
+expand missing pre/post dependencies in configure
+
+=item --allowbrokencomps
+
+Do not stop overall execution if 'broken' components are found, just ignore
+these ('broken' components: component file missing or not instantiable)
+
+=item --list
+
+Does nothing but list all found components, in the following format:
+
+name - active? - installed?
+
+=back
+
+=head2 Other Options
+
+=over
+
+=item --help
+
+Displays a help message with all options and default settings.
+
+=item --version
+
+Displays application version information.
+
+=item --verbose
+
+Print verbose details on operations.
+
+=item --debug <1..5>
+
+Set the debugging level to <1..5>.
+
+=item --quiet
+
+Suppress application output to standard output.
+
+=item --noaction
+
+Do not actually perform operations.
+
+=back
+
+=head1 CONFIGURATION FILE
+
+A configuration file can keep site-wide configuration settings. The
+location of the configuration file is defined in the --cfgfile
+option. A default configuration file is found in
+@QTTR_ETC@/@COMP@.conf
+
+=head1 SIGNAL HANDLING
+
+If a signal is received, the ncm-ncd will try to finish its execution
+gracefully and will report an error (return status: -1), except if
+it was called with the --noaction flag.
+
+=head1 AUTHOR
+
+German Cancio, CERN <German.Cancio@cern.ch>
+
+=head1 MORE INFORMATION
+
+Visit B<http://quattor.org> for more information on the quattor
+toolsuite.
+
+=cut
+
+
+#
+# Standard Common Application Framework beginning sequence
+#
+
+#
+# Beginning sequence for EDG initialization
+#
+BEGIN {
+
+    # use perl libs in @QTTR_PERLLIB@
+  unshift(@INC, '@QTTR_VAR@/ncm/lib/perl');
+  unshift(@INC, '@QTTR_PERLLIB@');
+  unshift(@INC,'/opt/edg/lib/perl');
+}
+
+#------------------------------------------------------------
+# Application
+#------------------------------------------------------------
+
+package ncd;
+
+use CAF::Application;
+use CAF::Reporter;
+use LC::Exception qw (SUCCESS throw_error);
+use EDG::WP4::CCM::CacheManager;
+use strict;
+use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
+use vars qw(@ISA);
+
+@ISA = qw(CAF::Application CAF::Reporter);
+
+#
+# Public Methods/Functions for CAF
+#
+
+sub app_options() {
+  # these options complement the ones defined in CAF::Application
+  push(my @array,
+
+       { NAME    => 'configure',
+	 HELP    => 'run the configure method on the components',
+	 DEFAULT => undef },
+
+       { NAME    => 'all',
+	 HELP    => 'used with --configure to run on all components',
+	 DEFAULT => undef },
+
+       { NAME    => 'unconfigure',
+	 HELP    => 'run the unconfigure method on the component',
+	 DEFAULT => undef },
+
+       { NAME    => 'logdir=s',
+	 HELP    => 'log directory to use for ncd log files',
+	 DEFAULT => '@NCM_LOG@' },
+
+       { NAME    => 'cache_root:s',
+	 HELP    => 'CCM cache root directory (optional, otherwise CCM default taken)',
+	 DEFAULT => undef },
+
+       { NAME    => 'cfgfile=s',
+	 HELP    => 'configuration file for ncd defaults',
+	 DEFAULT => '@QTTR_ETC@/@COMP@.conf' },
+
+       { NAME    => 'multilog',
+	 HELP    => 'use separate component log files in log directory',
+	 DEFAULT => 1},
+
+       { NAME    => 'noaction',
+	 HELP    => 'do not actually perform operations',
+	 DEFAULT => undef },
+
+       { NAME    => 'retries=i',
+	 HELP    => 'number of retries if ncd is locked',
+	 DEFAULT => 10 },
+
+       { NAME    => 'timeout=i',
+	 HELP    => 'maximum time in seconds between retries',
+	 DEFAULT => 30 },
+
+       {NAME =>'ignorelock',
+	HELP =>'ignore application lock. Use with care.'},
+
+       {NAME =>'forcelock',
+	HELP =>'take over application lock. Use with care.'},
+
+       { NAME    => 'useprofile:s',
+	 HELP    => 'profile to use as configuration profile (optional, otherwise latest)',
+	 DEFAULT => undef },
+
+       { NAME    => 'nodeps',
+	 HELP    => 'ignore broken (pre/post) dependencies in configure',
+	 DEFAULT => undef },
+
+      { NAME    => 'skip:s',
+	 HELP    => 'skip one component (only to be used with --all)',
+	 DEFAULT => undef },
+
+       { NAME    => 'autodeps=s',
+	 HELP    => 'expand missing pre/post dependencies in configure',
+	 DEFAULT => 'yes' },
+
+       { NAME    => 'allowbrokencomps=s',
+	 HELP    => 'Do not stop overall execution if broken components are found',
+	 DEFAULT => 'yes' },
+
+       { NAME    => 'list',
+	 HELP    => 'list existing components and exit',
+	 DEFAULT => undef }
+
+      );
+
+    return \@array;
+
+}
+
+
+
+# public methods
+
+#
+# setLockedCCMConfig($cacheroot,$profileID): boolean
+#
+
+sub setLockCCMConfig {
+  my ($self,$cacheroot,$profileID)=@_;
+
+  $self->verbose('accessing CCM cache manager..');
+
+  $self->{'CACHEMGR'}=EDG::WP4::CCM::CacheManager->new($cacheroot);
+  unless (defined $self->{'CACHEMGR'}) {
+    throw_error ('cannot access cache manager');
+    return undef;
+  }
+
+  my $cred=undef; # not defined yet in CCM
+
+  $self->verbose('getting locked CCM configuration..');
+
+  $self->{'CCM_CONFIG'}=$self->{'CACHEMGR'}->getLockedConfiguration($cred,$profileID);
+  unless (defined $self->{'CCM_CONFIG'}) {
+    throw_error ('cannot get configuration via CCM');
+    return undef;
+  }
+
+  return SUCCESS;
+}
+
+#
+# getCCMConfig(): ref(EDG::WP4::CCM::Configuration)
+# returns the CCM config instance
+#
+
+sub getCCMConfig {
+  my $self=shift;
+
+  return $self->{'CCM_CONFIG'};
+}
+
+#
+# Other relevant methods
+#
+
+sub lock {
+  my $self=shift;
+  $self->{LOCK}=CAF::Lock->new('@QTTR_LOCKD@/ncm-ncd');
+  my $lock_flag=FORCE_IF_STALE;
+  $lock_flag=FORCE_ALWAYS if ($self->option("forcelock"));
+  unless ($self->{LOCK}->set_lock($self->option("retries"),
+				  $self->option("timeout"),
+				  $lock_flag)) {
+    return undef;
+  }
+  return SUCCESS;
+}
+
+
+sub finish {
+  my ($self,$ret)=@_;
+  $self->{LOCK}->unlock() if ($self->{LOCK} && $self->{LOCK}->is_set());
+  exit ($ret);
+}
+
+
+sub _initialize {
+  my $self = shift;
+  #
+  # define application specific data.
+  #
+  # external version number
+  $self->{'VERSION'} ='@VERSION@';
+  # show setup text
+  $self->{'USAGE'} =
+    "Written by German Cancio <German.Cancio\@cern.ch>\n" .
+    "\n" .
+    "Usage: ncm-ncd --configure   [options] [<component1,2..>] or\n" .
+    "       ncm-ncd --unconfigure [options] <component>\n";
+  #
+  # start initialization of CAF::Application
+  #
+  unless ($self->SUPER::_initialize(@_)) {
+    return undef;
+  }
+
+  # ensure allowed to run
+  if ($>) {
+    $self->error("Sorry ".$self->username().
+		     ", this program must be run by root");
+    exit(-1);
+  }
+
+  $self->{'NCD_LOGFILE'}=$self->option("logdir") . '/ncd.log';
+  $self->{'LOG'}=CAF::Log->new($self->{'NCD_LOGFILE'},'at');
+  return undef unless (defined $self->{'LOG'});
+  # start using log file
+  $self->set_report_logfile($self->{'LOG'});
+  return SUCCESS;
+}
+
+
+#############################################################
+# ncd main program
+#############################################################
+
+package main;
+
+use strict;
+use LC::Exception qw (SUCCESS throw_error);
+use NCD::ComponentProxyList;
+use vars qw($this_app %SIG);
+
+
+my $ec=LC::Exception::Context->new->will_store_errors;
+$LC::Exception::Reporter=\&main::error_reporter;
+
+# fix umask
+umask (022);
+# minimal Path
+$ENV{"PATH"} = "/bin:/sbin:/usr/bin:/usr/sbin";
+
+# unbuffer STDOUT & STDERR
+autoflush STDOUT 1;
+autoflush STDERR 1;
+
+#------------------------------------------------------------
+# Functions in the main program
+#------------------------------------------------------------
+
+sub signal_handler {
+  my $signal=shift;
+
+  # ignore further signals
+  $SIG{'INT'} ='IGNORE';
+  $SIG{'TERM'}='IGNORE';
+  $SIG{'QUIT'}='IGNORE';
+  $SIG{'USR2'}='IGNORE';
+  $SIG{'HUP'}='IGNORE';
+  $this_app->warn('signal handler: received signal: '.$signal);
+  unless ($this_app->option('noaction')) {
+    #
+    # handle the signal.
+    #
+    $this_app->error('ncd exiting gracefully after signal hit.');
+    $this_app->finish(-1);
+  }
+  $this_app->finish(0);
+}
+
+#
+# report exceptions here in CAF compatible way
+#
+
+sub error_reporter {
+  my($err, $uncaught) = @_;
+  my($stack, $depth, $frame);
+  my $report='error';
+  $report='warn' unless ($err->is_error);
+  if ($uncaught) {
+    $this_app->$report("Uncaught exception!");
+    if ($err->is_error || $this_app->option('debug') || $this_app->option('verbose')) {
+      $this_app->$report("Calling stack is:");
+      $stack = $err->stack;
+      $depth = 0;
+      while ($frame = $stack->[$depth]) {
+	$this_app->report("\t", $frame->subroutine, " called at ",
+			  $frame->filename, " line ", $frame->line, "\n");
+	$depth++;
+      }
+    }
+  }
+  $this_app->$report($err->format, "\n");
+  die("finishing...") if $err->is_error;
+}
+
+
+
+
+#------------------------------------------------------------
+# main loop
+#------------------------------------------------------------
+
+#
+# initialize the ncd application
+#
+unless ($this_app = 'ncd'->new($0,@ARGV)) {
+  throw_error("cannot start application");
+}
+
+# ensure allowed to run
+if ($>) {
+  $this_app->error("Sorry ".$this_app->username().
+		   ", this program must be run by root");
+  exit(-1);
+}
+
+#
+# Handle signals properly
+#
+$SIG{'INT'} =\&signal_handler;
+$SIG{'TERM'}=\&signal_handler;
+$SIG{'QUIT'}=\&signal_handler;
+$SIG{'USR2'}=\&signal_handler;
+$SIG{'HUP'}='IGNORE';
+
+
+#
+# process command line options before proceeding.
+#
+
+
+
+$this_app->report();
+$this_app->log('------------------------------------------------------------');
+$this_app->info('NCM-NCD version '. $this_app->version().' started by '.
+	    $this_app->username() .' at: '.scalar(localtime));
+
+$this_app->info('Dry run, no changes will be performed (--noaction flag set)')
+  if ($this_app->option('noaction'));
+
+unless ($this_app->option('configure') || 
+	$this_app->option('unconfigure') ||
+	$this_app->option('list')
+       ) {
+  $this_app->error('please specify either configure, unconfigure or list as options');
+  $this_app->finish(-1);
+}
+
+if ($this_app->option('configure') && $this_app->option('unconfigure')) {
+  $this_app->error('configure and unconfigure options cannot be used simultaneously');
+  $this_app->finish(-1);
+}
+
+
+# set local NVA API lock TBD
+unless ($this_app->setLockCCMConfig(
+				    $this_app->option('cache_root'),
+				    $this_app->option('useprofile'))
+       ) {
+  $this_app->error("cannot get locked CCM configuration");
+  $this_app->finish(-1);
+}
+
+if ($this_app->option('list')) {
+  my $compList=NCD::ComponentProxyList->new($this_app->getCCMConfig());
+  unless (defined $compList) {
+    $ec->ignore_error();
+    $this_app->error("cannot get component(s)");
+    $this_app->finish(-1);
+  }
+  $compList->reportComponents();
+  $this_app->finish(0);
+}
+
+#
+# now, do either configure or unconfigure. Set the application lock
+#
+
+$this_app->verbose('checking for ncm-ncd locks...');
+unless ($this_app->option("ignorelock")) {
+  $this_app->lock() or $this_app->finish(-1);
+}
+
+
+my ($method,$msg);
+if ($this_app->option('unconfigure')) {
+  #
+  # UNCONFIGURE option
+  #
+  unless (scalar @ARGV) {
+    $this_app->error("unconfigure requires a component as argument");
+    $this_app->finish (-1);
+  }
+  unless (scalar @ARGV == 1) {
+    $this_app->error('more than one components cannot be unconfigured at a time');
+    $this_app->finish(-1);
+  }
+  $method='executeUnconfigComponent';
+  $msg='unconfigure';
+} else {
+  #
+  # CONFIGURE option
+  #
+  $this_app->info('Ignoring broken pre/post dependencies (--nodeps flag set)')
+    if ($this_app->option('nodeps'));
+  $method='executeConfigComponents';
+  $msg='configure';
+}
+
+
+my @component_names=();
+# remove duplicates
+my $last='';
+foreach (sort(@ARGV)) {
+  push (@component_names,$_) if ($last ne $_);
+  $last=$_;
+}
+
+unless ($this_app->option('all') || scalar(@component_names)) {
+  $this_app->error("please provide component names as parameters, or use --all");
+  $this_app->finish(-1);
+}
+
+my $skip = $this_app->option('skip');
+
+if (defined $skip && !$this_app->option('all')) {
+  $this_app->error("--skip option requires --all option to be set");
+  $this_app->finish(-1);
+}
+
+
+unless (scalar(@component_names)) {
+  $this_app->info('no components specified, getting all active ones..');
+}
+
+my $compList=NCD::ComponentProxyList->new($this_app->getCCMConfig(),$skip,
+					  @component_names);
+unless (defined $compList) {
+  $ec->ignore_error();
+  $this_app->error("cannot get component(s)");
+  $this_app->finish(-1);
+}
+
+chdir ('/tmp');
+my $ret=$compList->$method();
+my $fun='OK';
+my $exit=0;
+if ($ret->{'ERRORS'}) {
+  $fun='error'; $exit=-1;
+} elsif ($ret->{'WARNINGS'}) {
+  $fun='warn';
+}
+$this_app->report();
+$this_app->report('=========================================================');
+$this_app->report();
+
+# Get the list of components with errors
+
+my $arrayref=$ret->{'ERR_COMPS'};
+my $err_comp_string="";
+foreach my $err_comp (keys %$arrayref) {
+  $err_comp_string.="$err_comp ($arrayref->{$err_comp}) ";
+}
+chop($err_comp_string);
+
+# Get the list of components with warnings
+
+my $arrayrefw=$ret->{'WARN_COMPS'};
+my $warn_comp_string="";
+foreach my $warn_comp (keys %$arrayrefw) {
+  $warn_comp_string.="$warn_comp ($arrayrefw->{$warn_comp}) ";
+}
+chop($warn_comp_string);
+
+
+if ($ret->{'ERRORS'} > 0) {
+   $this_app->info('Errors while configuring '.$err_comp_string);
+}
+
+if ($ret->{'WARNINGS'} > 0) {
+   $this_app->info('Warnings while configuring '.$warn_comp_string);
+
+}
+
+
+$this_app->$fun($ret->{'ERRORS'},' errors, '.
+		$ret->{'WARNINGS'},' warnings '.
+		'executing '.$msg);
+#               ' on: '.
+#		(scalar @component_names ?
+#		 join(',', @component_names) : "all components"));
+
+$this_app->finish($exit);
+
+
+#*#################################################################
