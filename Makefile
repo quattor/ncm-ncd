@@ -9,7 +9,7 @@ all: configure
 #
 # BTDIR needs to point to the location of the build tools
 #
-BTDIR := ../quattor-build-tools
+BTDIR := quattor-build-tools
 #
 #
 _btincl   := $(shell ls $(BTDIR)/quattor-buildtools.mk 2>/dev/null || \
