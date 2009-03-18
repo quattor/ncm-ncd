@@ -258,7 +258,7 @@
 2004-03-09  German CANCIO MELIA
 
         * Release: 1.0.29
-        - Added new 0--list option; added new --all option )9(now needed for running on all prcomponents)
+        - Added new --list option; added new --all option (now needed for running on all components)
 
 2004-02-18  German CANCIO MELIA
 
