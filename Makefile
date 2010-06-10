@@ -9,7 +9,7 @@ all: configure
 #
 # BTDIR needs to point to the location of the build tools
 #
-BTDIR := quattor-build-tools
+BTDIR := ../quattor-build-tools
 #
 #
 _btincl   := $(shell ls $(BTDIR)/quattor-buildtools.mk 2>/dev/null || \
@@ -47,6 +47,7 @@ install: configure man
 	@mkdir -p $(PREFIX)/$(QTTR_DOC)
 	@mkdir -p $(PREFIX)/$(QTTR_MAN)/man1
 	@mkdir -p $(PREFIX)/$(QTTR_ETC)/not.d
+	@mkdir -p $(PREFIX)/var/run/quattor-components
 
 	@install -m 0755 $(COMP) $(PREFIX)/$(QTTR_SBIN)/$(COMP)
 	@install -m 0444 $(COMP).conf $(PREFIX)/$(QTTR_ETC)/$(COMP).conf

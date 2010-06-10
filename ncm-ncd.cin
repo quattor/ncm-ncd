@@ -80,6 +80,19 @@ directory where to place ncm-ncd and component log files
 
 try 'n' times if locked (another ncm-ncd instance is running).
 
+=item --state <dir>
+
+directory in which to find state files. On conclusion of any component
+configuration, if the configuration was successful then the component
+file will be deleted from this state directory. If a component
+produces errors, then the component file will contain the number of errors.
+In other words, if a configuration is clean then there will be
+no files within the state directory. If there are any problems with
+the configuration, then there will be a file for the failing
+components. An empty file indicates that the component has not
+completed its configuration. If this option is not defined, then
+no state files will be maintained.
+
 =item --timeout <n>
 
 wait a maximum of 'n' seconds between retries.
@@ -254,6 +267,10 @@ sub app_options() {
        { NAME    => 'retries=i',
 	 HELP    => 'number of retries if ncd is locked',
 	 DEFAULT => 10 },
+
+       { NAME    => 'state=s',
+         HELP    => 'where to find state files',
+         DEFAULT => undef },
 
        { NAME    => 'timeout=i',
 	 HELP    => 'maximum time in seconds between retries',
@@ -484,7 +501,8 @@ sub error_reporter {
 # initialize the ncd application
 #
 unless ($this_app = 'ncd'->new($0,@ARGV)) {
-  throw_error("cannot start application");
+  die("cannot start application");
+  exit(1);
 }
 
 # ensure allowed to run

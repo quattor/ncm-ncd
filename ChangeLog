@@ -1,3 +1,8 @@
+2010-06-10  <unknown>
+
+	* Release: 1.3.0
+	- enable state directory to track which components are running/failed
+
 2008-10-21  "Luis Fernando"
 
 	* Release: 1.2.26
@@ -258,7 +263,7 @@
 2004-03-09  German CANCIO MELIA
 
         * Release: 1.0.29
-        - Added new --list option; added new --all option (now needed for running on all components)
+        - Added new 0--list option; added new --all option )9(now needed for running on all prcomponents)
 
 2004-02-18  German CANCIO MELIA
 

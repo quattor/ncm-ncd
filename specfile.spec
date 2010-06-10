@@ -52,7 +52,7 @@ make PREFIX=$RPM_BUILD_ROOT install
 %config @QTTR_ETC@/@COMP@.conf
 %attr(755,root,root) @QTTR_SBIN@/ncm_wrapper.sh
 %attr(755,root,root) @QTTR_SBIN@/ncm_unconfigure_wrapper.sh
-
+%dir /var/run/quattor-components
 
 %package -n CERN-CC-ncm-ncd-notd
 Group: @GROUP@/System

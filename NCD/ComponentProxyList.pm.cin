@@ -130,23 +130,35 @@ sub executeConfigComponents {
 	}
       }
       if (scalar @broken_dep) {
-	$self->error('cannot run component: '.$comp->name().
-		     ' as pre-dependencies failed: '.join(',',@broken_dep));
+        my $err = 'cannot run component: '.$comp->name().
+          ' as pre-dependencies failed: '.join(',',@broken_dep);
+        $self->error($err);
 	$global_status{'ERRORS'}++;
 	$err_comps_list{$comp->name()}=1;
+        $self->set_state($comp->name(), $err);
       } else {
+        # we set the state to "unknown" (in effect) just before we
+        # run configure, so that the state will reflect that this component
+        # has still not run to completion. All code-paths following this
+        # MUST either set_state or clear_state.
+        $self->set_state($comp->name(), ""); 
+
 	my $ret=$comp->executeConfigure();
 	unless (defined $ret) {
-	  $self->error('cannot execute configure on component '.$comp->name());
+          my $err = "cannot execute configure on component " . $comp->name();
+          $self->error($err);
 	  $global_status{'ERRORS'}++;
 	  $err_comps_list{$comp->name()}=1;
 	  $exec_status{$comp->name()}=$FAIL;
+          $self->set_state($comp->name(), $err);
 	} else {
 	  if ($ret->{'ERRORS'}) {
 	    $err_comps_list{$comp->name()}=$ret->{'ERRORS'};
 	    $exec_status{$comp->name()}=$FAIL;
+            $self->set_state($comp->name(), $ret->{ERRORS});
 	  } else {
 	    $exec_status{$comp->name()}=$OK;
+            $self->clear_state($comp->name());
 	  }
 	  if ($ret->{'WARNINGS'}) {
 	    $warn_comps_list{$comp->name()}=$ret->{'WARNINGS'};
@@ -165,8 +177,29 @@ sub executeConfigComponents {
   return \%global_status;
 }
 
+# Mark a component as failed within our state directory
+sub set_state {
+    my ($self, $comp, $msg) = @_;
+    if ($this_app->option('state')) {
+       my $file = $this_app->option('state') . '/' . $comp;
+       if (open(TOUCH, ">$file")) {
+           print TOUCH "$msg\n";
+           close(TOUCH);
+       } else {
+           $self->warn("failed to write state file $file: $!");
+       }
+    }
+}
+ 
 
-
+# Mark a component as succeeded within our state directory
+sub clear_state {
+    my ($self, $comp) = @_;
+    if ($this_app->option('state')) {
+       my $file = $this_app->option('state') . '/' . $comp;
+       unlink($file) or $self->warn("failed to clean state $file: $!");
+    }
+}
 
 sub executeUnconfigComponent {
   my $self=shift;
