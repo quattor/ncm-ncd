@@ -1,4 +1,4 @@
-2010-06-10  <unknown>
+2010-06-10  "Nick Williams"
 
 	* Release: 1.3.0
 	- enable state directory to track which components are running/failed
