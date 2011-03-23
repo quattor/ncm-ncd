@@ -259,7 +259,7 @@ Returns the escaped version of the string provided as parameter (similar to the 
 =cut
 
 sub escape ($) {
-  my $str = shift;
+  my ($self,$str)=@_;
 
   $str =~ s/(^[0-9]|[^a-zA-Z0-9])/sprintf("_%lx", ord($1))/eg;
   return $str;
