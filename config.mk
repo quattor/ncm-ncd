@@ -6,7 +6,7 @@ COMP=ncm-ncd
 
 NAME=$(COMP)
 DESCR=ncd is the NCM client front end for invoking components
-VERSION=1.3.3
+VERSION=1.3.4
 RELEASE=1
 
 AUTHOR=German Cancio <German.Cancio@cern.ch>

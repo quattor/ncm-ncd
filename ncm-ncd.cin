@@ -1,4 +1,4 @@
-#!@PERL_EXECUTABLE@ -w
+#!@PERL_EXECUTABLE@ -w -t
 #
 #
 # ncd: Node Configuration Dispatcher - quattor project

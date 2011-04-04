@@ -368,14 +368,20 @@ sub _getComponents {
     return undef;
   }
 
+  my @skiplist;
   if (defined $self->{'SKIP'}) {
-    if (grep ($_ eq $self->{'SKIP'}, @compnames)) {
-      $self->info('skip option set - skipping component: '.$self->{'SKIP'});
-      @compnames = grep ($_ ne $self->{'SKIP'}, @compnames);
-    } else {
-      $self->info('skip option set - but component to be skipped '.
+    chomp($self->{'SKIP'});
+    @skiplist = split(/,/,$self->{'SKIP'});
+    foreach my $skipcomp (@skiplist){
+      chomp ($skipcomp);
+      if (grep ($_ eq $skipcomp, @compnames)) {
+        $self->info('skip option set - skipping component: '.$skipcomp);
+        @compnames = grep ($_ ne $skipcomp, @compnames);
+      } else {
+        $self->info('skip option set - but component to be skipped '.
 		  'not found in active list: '
-		  .$self->{'SKIP'});
+		  .$skipcomp);
+      }
     }
   }
 
@@ -399,8 +405,12 @@ sub _getComponents {
       foreach $pp (@pre,@post) {
 	unless (grep {$pp eq $_} @compnames) {
 	  if ($this_app->option('autodeps') eq 'yes') {
-	    push(@compnames,$pp);
-	    $self->info("adding missing pre/post requisite component: ".$pp);
+	    if (@skiplist && grep{$pp eq $_} @skiplist) {
+	      $self->warn('skipping requested component: '.$cname);
+	    } else {
+	      push(@compnames,$pp);
+	      $self->info("adding missing pre/post requisite component: ".$pp);
+	    }
 	  }
 	}
       }
