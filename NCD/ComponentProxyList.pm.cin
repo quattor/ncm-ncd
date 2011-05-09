@@ -177,6 +177,22 @@ sub executeConfigComponents {
   return \%global_status;
 }
 
+sub get_statefile {
+    my ($self, $comp) = @_;
+    if ($this_app->option('state')) {
+       my $file = $this_app->option('state') . '/' . $comp;
+       if ($file =~ m{^(\/[^\|<>&]*)$}) {
+           # Must be an absolute path, no shell metacharacters
+           return $1;
+       } else {
+           $self->warn("state filename $file is inappropriate");
+           # Don't touch the state file
+           return undef;
+       }
+    }
+    return undef;
+}
+
 # Mark a component as failed within our state directory
 sub set_state {
     my ($self, $comp, $msg) = @_;
@@ -188,8 +204,8 @@ sub set_state {
        }
        return;
     }
-    if ($this_app->option('state')) {
-       my $file = $this_app->option('state') . '/' . $comp;
+    my $file = $self->get_statefile($comp);
+    if ($file) {
        if (open(TOUCH, ">$file")) {
            print TOUCH "$msg\n";
            close(TOUCH);
@@ -207,8 +223,8 @@ sub clear_state {
        $self->info("would mark state of component as success");
        return;
     }
-    if ($this_app->option('state')) {
-       my $file = $this_app->option('state') . '/' . $comp;
+    my $file = $self->get_statefile($comp);
+    if ($file) {
        unlink($file) or $self->warn("failed to clean state $file: $!");
     }
 }

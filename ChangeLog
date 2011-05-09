@@ -1,5 +1,10 @@
 2011-05-09  Nick Williams
 
+	* Release: 1.4.1
+	- add in some taint checks given that ncm-ncd now is in taint-warn mode
+
+2011-05-09  Nick Williams
+
 	* Release: 1.4.0
 	- bugfix: when running in NoAction mode, don't modify any state files
 
