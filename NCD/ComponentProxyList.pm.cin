@@ -180,6 +180,14 @@ sub executeConfigComponents {
 # Mark a component as failed within our state directory
 sub set_state {
     my ($self, $comp, $msg) = @_;
+    if ($this_app->option('noaction')) {
+       if (!$msg) {
+           $self->info("would mark state of component as needing to run");
+       } else {
+           $self->info("would mark state of component as '$msg'");
+       }
+       return;
+    }
     if ($this_app->option('state')) {
        my $file = $this_app->option('state') . '/' . $comp;
        if (open(TOUCH, ">$file")) {
@@ -195,6 +203,10 @@ sub set_state {
 # Mark a component as succeeded within our state directory
 sub clear_state {
     my ($self, $comp) = @_;
+    if ($this_app->option('noaction')) {
+       $self->info("would mark state of component as success");
+       return;
+    }
     if ($this_app->option('state')) {
        my $file = $this_app->option('state') . '/' . $comp;
        unlink($file) or $self->warn("failed to clean state $file: $!");
