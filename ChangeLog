@@ -1,3 +1,8 @@
+2011-06-30 Ulrich Schwickerath
+        * Release: 1.4.1-2
+        - decouple the CERN-CC specific packages from the exact spma version
+        - add support for configuration of randomization in CERN-CC configuration files
+
 2011-05-09  Nick Williams
 
 	* Release: 1.4.1

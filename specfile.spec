@@ -57,7 +57,7 @@ make PREFIX=$RPM_BUILD_ROOT install
 %package -n CERN-CC-ncm-ncd-notd
 Group: @GROUP@/System
 Summary: NCM-NCD: CERN-CC specific entries for not.d
-Requires: ncm-ncd >= @VERSION@
+Requires: ncm-ncd 
 %description -n CERN-CC-ncm-ncd-notd
 NCM-NCD: CERN-CC specific entries for not.d 
 

@@ -10,9 +10,6 @@ ncm       {
           server=regis.cern.ch,notdserv.cern.ch,notdv2serv
           exec=@QTTR_SBIN@/ncm_wrapper.sh
           waittofin=yes
+          waittorun=10
 }
-
-
-
-
 
