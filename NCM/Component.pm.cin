@@ -22,6 +22,8 @@ use Exporter;
 @EXPORT=qw($NoAction $SYSNAME $SYSVERS);
 
 $NoAction=$this_app->option('noaction');
+$CAF::Object::NoAction=$NoAction;
+
 $SYSNAME=LC::Sysinfo::os()->name;
 $SYSVERS=LC::Sysinfo::os()->version;
 
