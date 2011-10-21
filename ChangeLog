@@ -1,3 +1,8 @@
+2011-10-21  Loic Brarda
+
+	* Release: 1.5.0
+	- Add option to set the syslog facility (defaults to local1)
+
 2011-06-30 Ulrich Schwickerath
         * Release: 1.4.1-2
         - decouple the CERN-CC specific packages from the exact spma version

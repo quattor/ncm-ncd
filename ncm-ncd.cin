@@ -158,6 +158,10 @@ Print verbose details on operations.
 
 Set the debugging level to <1..5>.
 
+=item --facility <f>
+
+Set the syslog facility to <f> (Eg. local1).
+
 =item --quiet
 
 Suppress application output to standard output.
@@ -304,7 +308,11 @@ sub app_options() {
 
        { NAME    => 'list',
 	 HELP    => 'list existing components and exit',
-	 DEFAULT => undef }
+	 DEFAULT => undef },
+     
+       { NAME    => 'facility=s',
+    HELP    => 'facility name for syslog',
+    DEFAULT => 'local1' }
 
       );
 
