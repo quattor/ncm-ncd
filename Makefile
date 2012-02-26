@@ -47,7 +47,7 @@ install: configure man
 	@mkdir -p $(PREFIX)/$(QTTR_DOC)
 	@mkdir -p $(PREFIX)/$(QTTR_MAN)/man1
 	@mkdir -p $(PREFIX)/$(QTTR_ETC)/not.d
-	@mkdir -p $(PREFIX)/var/run/quattor-components
+	@mkdir -p $(PREFIX)/$(QTTR_VAR)/run/quattor-components
 
 	@install -m 0755 $(COMP) $(PREFIX)/$(QTTR_SBIN)/$(COMP)
 	@install -m 0444 $(COMP).conf $(PREFIX)/$(QTTR_ETC)/$(COMP).conf
