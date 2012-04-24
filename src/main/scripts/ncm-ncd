@@ -118,7 +118,12 @@ sub app_options() {
 
        { NAME    => 'facility=s',
     HELP    => 'facility name for syslog',
-    DEFAULT => 'local1' }
+    DEFAULT => 'local1' },
+
+       { NAME => "template-path=s",
+	 HELP => 'store for Template Toolkit files',
+	 DEFAULT => '/usr/share/templates/quattor'
+       }
 
       );
 
