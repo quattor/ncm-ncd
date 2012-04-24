@@ -1,11 +1,7 @@
-#
-# NCM Check class
-#
-# German Cancio <German.Cancio@cern.ch>,
-# code and functions partly from Lionel Cons <Lionel.Cons@cern.ch>
-#
-# (C) 2003 CERN & EU DataGrid http://www.edg.org
-#
+# ${license-info}
+# ${developer-info
+# ${author-info}
+# ${build-info}
 
 package NCM::Check;
 

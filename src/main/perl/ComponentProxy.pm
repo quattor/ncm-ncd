@@ -1,10 +1,8 @@
-#
-# NCD ComponentProxy class
-#
-# Written by German Cancio <German.Cancio@cern.ch>
-#
-# (C) 2003 German Cancio / CERN & EU DataGrid http://www.edg.org
-#
+# ${license-info}
+# ${developer-info
+# ${author-info}
+# ${build-info}
+
 
 package NCD::ComponentProxy;
 
@@ -175,12 +173,12 @@ sub hasFile {
   return -r '/usr/lib/perl/NCM/Component/'.$self->name().'.pm' ? 1:0 ;
 }
 
-=pod 
+=pod
 =item writeComponent(): boolean
 
 returns 1 if the component has the code defined in the configuration
-and has been written to disk, 0 otherwise.  This will erase old 
-component definitions if the code is no longer defined in the 
+and has been written to disk, 0 otherwise.  This will erase old
+component definitions if the code is no longer defined in the
 XML configuration.
 
 =cut
@@ -189,7 +187,7 @@ sub writeComponent {
 
   my $self=shift;
 
-  # Pull out the component name and the configuration. 
+  # Pull out the component name and the configuration.
   my $cname = $self->{'NAME'};
   my $config = $self->{'CONFIG'};
 
@@ -205,9 +203,9 @@ sub writeComponent {
   my $base = '/software/components/'.$cname;
 
   # Determine if the script exists.  If not, then ensure that any
-  # files created by previous runs are removed.  This is to avoid 
+  # files created by previous runs are removed.  This is to avoid
   # interference between old scripts and newer ones installed via
-  # a package.  This is needed because there is no hook for 
+  # a package.  This is needed because there is no hook for
   # cleaning up a script if no 'Unconfigure' method is defined.
   unless ($config->elementExists($base.'/code/script')) {
 
@@ -217,11 +215,11 @@ sub writeComponent {
 	  unlink $fname;
 	  $self->error("error unlinking $fname") if ($?);
       }
-      
+
       # Remove data directory for this template.
       my $dname = "/var/ncm/config/$cname";
       rmtree($dname,0,1) if (-e $dname);
-      
+
       return 0;
   }
 
@@ -258,19 +256,19 @@ sub writeComponent {
       return 0;
   }
 
-  # Write out data files if specified. 
+  # Write out data files if specified.
   if ($config->elementExists($base.'/code/data')) {
       my $dhash = $config->getElement($base.'/code/data');
       while ($dhash->hasNextElement()) {
 	  my $entry = $dhash->getNextElement();
 	  my $fname = $entry->getName();
 	  my $contents = $config->getValue($base.'/code/data/'.$fname);
-	      
+
 	  # Now write the script to the file.
 	  open DATA, '>', "$ddir/$fname";
 	  print DATA $contents;
 	  close DATA;
-	  
+
 	  # Check if there was an error while writing the script.
 	  if ($?) {
 	      $self->error("error writing data file $ddir/$fname: $!");
@@ -278,7 +276,7 @@ sub writeComponent {
 	  }
       }
   }
-  
+
   return 1;
 }
 

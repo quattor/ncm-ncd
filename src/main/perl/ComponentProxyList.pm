@@ -1,10 +1,7 @@
-#
-# NCD ComponentProxyList class
-#
-# Written by German Cancio <German.Cancio@cern.ch>
-#
-# (C) 2003 German Cancio / CERN & EU DataGrid http://www.edg.org
-#
+# ${license-info}
+# ${developer-info
+# ${author-info}
+# ${build-info}
 
 package NCD::ComponentProxyList;
 
@@ -141,7 +138,7 @@ sub executeConfigComponents {
         # run configure, so that the state will reflect that this component
         # has still not run to completion. All code-paths following this
         # MUST either set_state or clear_state.
-        $self->set_state($comp->name(), ""); 
+        $self->set_state($comp->name(), "");
 
 	my $ret=$comp->executeConfigure();
 	unless (defined $ret) {
@@ -214,7 +211,7 @@ sub set_state {
        }
     }
 }
- 
+
 
 # Mark a component as succeeded within our state directory
 sub clear_state {
@@ -287,7 +284,7 @@ sub _topoSort {
 		join(' < ',(@loop,$n)));
       return undef;
     }
-    return undef unless 
+    return undef unless
 	($self->_topoSort($n,$after,$visited,$active,$stack,$depth+1));
   }
   delete $active->{$v}; unshift @$stack,($v);

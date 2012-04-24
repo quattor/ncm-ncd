@@ -1,202 +1,8 @@
 #!/usr/bin/perl -w -t
-#
-#
-# ncd: Node Configuration Dispatcher - quattor project
-#
-# German Cancio <German.Cancio@cern.ch>
-#
-# $Id: ncm-ncd.cin,v 1.20 2007/12/21 14:55:50 gcancio Exp $
-#
-# Copyright (c) 2003 German Cancio / CERN and EU DataGrid.
-# For license conditions see http://www.eu-datagrid.org/license.html
-#
-
-
-=pod
-
-=head1 NAME
-
-ncm-ncd - Node Configuration Dispatcher
-      of the NCM (Node Configuration Management) subsystem
-
-      quattor toolsuite http://cern.ch/quattor
-
-=head1 SYNOPSIS
-
-ncm-ncd --configure   [options] [<component1> [<component2>] ...]
-ncm-ncd --unconfigure [options] component
-
-(See ncm-ncd --help for full list of options with default values.)
-
-=head1 DESCRIPTION
-
-The B<ncm-ncd> is the front end for invoking NCM configuration
-components. The B<ncm-ncd> is called with a list of components to be
-invoked as an argument. Based on this list, the B<ncd> looks up the
-inter-component dependencies, orders the components, and invokes each
-component sequentially.
-
-If no component is specified, the B<ncd> will invoke all
-components which are marked as active in the node configuration
-profile. These are considered to be the 'default' components to run.
-
-The B<ncd> can be executed manually, via B<cron>, or via the
-B<cdispd>.
-
-If a dependency is not fulfilled, the B<ncd> exits with an
-appropriate error message and return status.
-
-In case of deinstallation of a component using B<--unconfigure>,
-the B<ncd> is to be called with the component's name as a
-parameter.
-
-
-=head1 OPTIONS
-
-=over 4
-
-=item --configure
-
-run the 'configure' method for <component1,2..> (default option). For running configure on all components, use --configure --all.
-
-=item --all
-
-See above. Run --configure --all to run configure on all components.
-
-=item --skip <component>
-
-skip one component (only to be used with --all)
-
-=item --unconfigure
-
-run the 'unconfigure' method for <component>. Only one component can
-be unconfigured at a time.
-
-=item --logdir <dir>
-
-directory where to place ncm-ncd and component log files
-
-=item --retries <n>
-
-try 'n' times if locked (another ncm-ncd instance is running).
-
-=item --state <dir>
-
-directory in which to find state files. On conclusion of any component
-configuration, if the configuration was successful then the component
-file will be deleted from this state directory. If a component
-produces errors, then the component file will contain the number of errors.
-In other words, if a configuration is clean then there will be
-no files within the state directory. If there are any problems with
-the configuration, then there will be a file for the failing
-components. An empty file indicates that the component has not
-completed its configuration. If this option is not defined, then
-no state files will be maintained.
-
-=item --timeout <n>
-
-wait a maximum of 'n' seconds between retries.
-
-=item --ignorelock
-
-Ignore existing application lock. Use with care.
-
-=item --forcelock
-
-Take over application lock. Use with care.
-
-=item --useprofile <profile_id>
-
-use <profile_id> as NVA-API configuration profile ID (default: latest)
-
-=item --cache_root <directory>
-
-CCM cache root directory (optional, otherwise CCM default taken)
-
-=item --multilog
-
-use separate (per component) log files in log directory
-
-=item --nodeps
-
-ignore broken (pre/post) dependencies when invoking configure
-
-=item --autodeps
-
-expand missing pre/post dependencies in configure
-
-=item --allowbrokencomps
-
-Do not stop overall execution if 'broken' components are found, just ignore
-these ('broken' components: component file missing or not instantiable)
-
-=item --list
-
-Does nothing but list all found components, in the following format:
-
-name - active? - installed?
-
-=back
-
-=head2 Other Options
-
-=over
-
-=item --help
-
-Displays a help message with all options and default settings.
-
-=item --version
-
-Displays application version information.
-
-=item --verbose
-
-Print verbose details on operations.
-
-=item --debug <1..5>
-
-Set the debugging level to <1..5>.
-
-=item --facility <f>
-
-Set the syslog facility to <f> (Eg. local1).
-
-=item --quiet
-
-Suppress application output to standard output.
-
-=item --noaction
-
-Do not actually perform operations.
-
-=back
-
-=head1 CONFIGURATION FILE
-
-A configuration file can keep site-wide configuration settings. The
-location of the configuration file is defined in the --cfgfile
-option. A default configuration file is found in
-/etc/ncm-ncd.conf
-
-=head1 SIGNAL HANDLING
-
-If a signal is received, the ncm-ncd will try to finish its execution
-gracefully and will report an error (return status: -1), except if
-it was called with the --noaction flag.
-
-=head1 AUTHOR
-
-German Cancio, CERN <German.Cancio@cern.ch>
-
-=head1 MORE INFORMATION
-
-Visit B<http://quattor.org> for more information on the quattor
-toolsuite.
-
-=cut
-
-
+# ${license-info}
+# ${developer-info
+# ${author-info}
+# ${build-info}
 #
 # Standard Common Application Framework beginning sequence
 #
@@ -309,7 +115,7 @@ sub app_options() {
        { NAME    => 'list',
 	 HELP    => 'list existing components and exit',
 	 DEFAULT => undef },
-     
+
        { NAME    => 'facility=s',
     HELP    => 'facility name for syslog',
     DEFAULT => 'local1' }
@@ -544,7 +350,7 @@ $this_app->info('NCM-NCD version '. $this_app->version().' started by '.
 $this_app->info('Dry run, no changes will be performed (--noaction flag set)')
   if ($this_app->option('noaction'));
 
-unless ($this_app->option('configure') || 
+unless ($this_app->option('configure') ||
 	$this_app->option('unconfigure') ||
 	$this_app->option('list')
        ) {

@@ -1,10 +1,7 @@
-#
-# NCM Component class
-#
-# Written by German Cancio <German.Cancio@cern.ch>
-#
-# (C) 2003 German Cancio / CERN & EU DataGrid http://www.edg.org
-#
+# ${license-info}
+# ${developer-info
+# ${author-info}
+# ${build-info}
 
 package NCM::Component;
 
@@ -241,7 +238,7 @@ sub prefix {
 
 =item unescape($string): $string
 
-Returns the unescaped version of the string provided as parameter (as escaped by using the corresponding PAN function). 
+Returns the unescaped version of the string provided as parameter (as escaped by using the corresponding PAN function).
 
 =cut
 

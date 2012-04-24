@@ -1,3 +1,5 @@
+package ncm-ncd;
+
 =pod
 
 =head1 NAME
@@ -173,7 +175,7 @@ it was called with the --noaction flag.
 
 =head1 AUTHOR
 
-German Cancio, CERN <German.Cancio@cern.ch>
+${author}
 
 =head1 MORE INFORMATION
 

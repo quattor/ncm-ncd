@@ -1,10 +1,7 @@
-#+##############################################################################
-#                                                                              #
-# File: HLConfig.pm                                                            #
-#                                                                              #
-# Description: API to insulate the Productionising code from the config system #
-#                                                                              #
-#-##############################################################################
+# ${license-info}
+# ${developer-info
+# ${author-info}
+# ${build-info}
 
 package NCM::HLConfig;
 require Exporter;
