@@ -172,7 +172,7 @@ returns 1 if the components perl module is installed, 0 otherwise.
 sub hasFile {
   my $self=shift;
 
-  return -r '@NCM_COMP@/'.$self->name().'.pm' ? 1:0 ;
+  return -r '/usr/lib/perl/NCM/Component/'.$self->name().'.pm' ? 1:0 ;
 }
 
 =pod 
@@ -212,21 +212,21 @@ sub writeComponent {
   unless ($config->elementExists($base.'/code/script')) {
 
       # If the script exists, remove it.
-      my $fname = "@NCM_COMP_VAR@/$cname.pm";
+      my $fname = "/var/ncm/lib/perl/NCM/Component/$cname.pm";
       if (-e $fname) {
 	  unlink $fname;
 	  $self->error("error unlinking $fname") if ($?);
       }
       
       # Remove data directory for this template.
-      my $dname = "@NCM_DATA_VAR@/$cname";
+      my $dname = "/var/ncm/config/$cname";
       rmtree($dname,0,1) if (-e $dname);
       
       return 0;
   }
 
   # Ensure that the directory for the components exists.
-  my $sdir = '@NCM_COMP_VAR@';
+  my $sdir = '/var/ncm/lib/perl/NCM/Component';
   unless (-d $sdir) {
       mkpath($sdir, 0, 0755);
       unless (-d $sdir) {
@@ -236,7 +236,7 @@ sub writeComponent {
   }
 
   # Ensure that the directory for the component data exists.
-  my $ddir = '@NCM_DATA_VAR@/'.$cname;
+  my $ddir = '/var/ncm/config/'.$cname;
   unless (-d $ddir) {
       mkpath($ddir, 0, 0755);
       unless (-d $ddir) {
@@ -355,7 +355,7 @@ sub _load {
   # or check that it is pre-installed
   if (!$self->writeComponent()) {
       unless ($self->hasFile()) {
-	  $self->error('component '.$compname.' is not installed in @NCM_COMP_VAR@ or @NCM_COMP@');
+	  $self->error('component '.$compname.' is not installed in /var/ncm/lib/perl/NCM/Component or /usr/lib/perl/NCM/Component');
 	  return undef;
       }
   }
@@ -370,7 +370,7 @@ sub _load {
   eval "\$comp_EC=\$NCM::Component::$compname\:\:EC;";
   if ($@ || !defined $comp_EC || ref($comp_EC) ne 'LC::Exception::Context') {
     $self->error('bad component exception handler: $EC is not defined, not accessible or not of type LC::Exception::Context');
-    $self->error("(note 1: the component package name has to be exactly 'NCM::Component::$compname' - please verify this inside '@NCM_COMP@/$compname.pm' or '@NCM_COMP_VAR@/$compname.pm')");
+    $self->error("(note 1: the component package name has to be exactly 'NCM::Component::$compname' - please verify this inside '/usr/lib/perl/NCM/Component/$compname.pm' or '/var/ncm/lib/perl/NCM/Component/$compname.pm')");
     $self->error('(note 2: $EC has to be declared in "use vars (...)")');
     return undef;
   }
