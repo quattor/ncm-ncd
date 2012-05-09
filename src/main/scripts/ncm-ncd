@@ -1,3 +1,4 @@
+
 #!/usr/bin/perl -w -t
 # ${license-info}
 # ${developer-info
@@ -200,7 +201,7 @@ sub _initialize {
   # define application specific data.
   #
   # external version number
-  $self->{'VERSION'} ='1.5.0';
+  $self->{'VERSION'} ='${project.version}';
   # show setup text
   $self->{'USAGE'} =
     "Written by German Cancio <German.Cancio\@cern.ch>\n" .
