@@ -455,6 +455,11 @@ sub _execute {
 
   my $retval;
   my $name=$self->name();
+
+  local $SIG{'USR1'} = sub {
+      $self->info("Executing component $name");
+  };
+
   my $component=$self->_load();
   unless (defined $component) {
     $self->error('cannot load component: '.$name);
