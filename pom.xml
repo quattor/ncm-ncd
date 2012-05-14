@@ -103,6 +103,13 @@
 		<filemode>755</filemode>
 	      </mapping>
 	      <mapping>
+		<directory>/var/log/ncm</directory>
+		<directoryIncluded>true</directoryIncluded>
+		<groupname>root</groupname>
+		<username>root</username>
+		<filemode>700</filemode>
+	      </mapping>
+	      <mapping>
 		<directory>/var/run/quattor-components</directory>
 		<directoryIncluded>true</directoryIncluded>
 		<filemode>755</filemode>
