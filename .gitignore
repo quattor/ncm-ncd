@@ -1,5 +1,4 @@
 *~
 target/
-*#*
 *.#*
 junit_output.xml
