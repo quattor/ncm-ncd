@@ -11,6 +11,8 @@ use LC::Exception qw (SUCCESS throw_error);
 use LC::Sysinfo;
 use CAF::Object;
 use Exporter;
+use Template;
+use Template::Stash;
 
 @ISA=qw(Exporter CAF::Object);
 
@@ -356,9 +358,14 @@ sub _initialize {
   return SUCCESS;
 }
 
+$Template::Stash::PRIVATE = undef;
+my $template = Template->new(INCLUDE_PATH =>
+			     $this_app->option("template-path"));
 
-
-
+sub template
+{
+    return $template;
+}
 
 
 #+#############################################################################
