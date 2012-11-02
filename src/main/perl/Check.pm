@@ -7,11 +7,9 @@ package NCM::Check;
 
 use strict;
 use LC::Exception qw (SUCCESS throw_error throw_warning);
-use LC::Check;
+use parent qw(LC::Check);
 
-
-our (@ISA, $this_app);
-@ISA=qw(LC::Check);
+our ($this_app);
 
 *this_app = \$main::this_app;
 

@@ -6,18 +6,13 @@
 package NCD::ComponentProxyList;
 
 use strict;
-use CAF::ReporterMany;
 use LC::Exception qw (SUCCESS throw_error);
-use CAF::Object;
+use parent qw(CAF::Object CAF::ReporterMany);
 use NCD::ComponentProxy;
 
-our (@ISA, $this_app);
+our $this_app;
 
 *this_app = \$main::this_app;
-
-
-@ISA=qw(CAF::Object CAF::Reporter);
-
 
 my $ec=LC::Exception::Context->new->will_store_errors;
 

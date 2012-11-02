@@ -8,14 +8,12 @@ package NCM::Component;
 use strict;
 use LC::Exception qw (SUCCESS throw_error);
 use LC::Sysinfo;
-use CAF::Object;
-use Exporter;
+use parent qw(Exporter CAF::Object);
 use Template;
 use Template::Stash;
 
-our (@ISA, $this_app, @EXPORT, $NoAction, $SYSNAME, $SYSVERS);
+our ($this_app, @EXPORT, $NoAction, $SYSNAME, $SYSVERS);
 
-@ISA=qw(Exporter CAF::Object);
 
 *this_app = \$main::this_app;
 

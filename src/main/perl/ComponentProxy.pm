@@ -7,10 +7,9 @@
 package NCD::ComponentProxy;
 
 use strict;
-use CAF::ReporterMany;
 use LC::Exception qw (SUCCESS throw_error);
 
-use CAF::Object;
+use parent qw(CAF::Object CAF::ReporterMany);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Path;
 use CAF::Log;
@@ -18,12 +17,8 @@ use LC::Check;
 
 use File::Path;
 
-our (@ISA, $this_app);
-
+our $this_app;
 *this_app = \$main::this_app;
-
-
-@ISA=qw(CAF::Object CAF::ReporterMany);
 
 
 my $_COMP_PREFIX='/software/components';

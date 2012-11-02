@@ -4,10 +4,9 @@
 # ${build-info}
 
 package NCM::HLConfig;
-require Exporter;
+use parent qw(Exporter);
 
 # Only make callable functions visible externally
-our @ISA       = qw(Exporter);
 our @EXPORT_OK = qw($SOURCE %SchemaMap CreateSub Profile_URL);
 
 use DBI;
