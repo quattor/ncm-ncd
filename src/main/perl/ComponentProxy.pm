@@ -16,7 +16,6 @@ use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Path;
 use CAF::Log;
 use LC::Check;
-use NCM::Template;
 
 use File::Path;
 
@@ -30,8 +29,7 @@ my $_COMP_PREFIX='/software/components';
 
 my $ec=LC::Exception::Context->new->will_store_all;
 
-# default template delimiters (will be restored before running a component)
-my @_TEMPLATE_DELIMITERS=NCM::Template->GetDelimiters();
+
 
 =pod
 
@@ -504,7 +502,6 @@ sub _execute {
   # execute component
   my $result;
   chdir ('/tmp');
-  NCM::Template->SetDelimiters(@_TEMPLATE_DELIMITERS);
   my %ENV_BK=%ENV;
   # ensure that these signals get ignored
   # (%SIG is redefined by Perl itself sometimes)
@@ -585,4 +582,3 @@ sub _execute {
 
 #+#############################################################################
 1;
-
