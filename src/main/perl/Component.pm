@@ -6,13 +6,14 @@
 package NCM::Component;
 
 use strict;
-use vars qw(@ISA $this_app @EXPORT $NoAction $SYSNAME $SYSVERS);
 use LC::Exception qw (SUCCESS throw_error);
 use LC::Sysinfo;
 use CAF::Object;
 use Exporter;
 use Template;
 use Template::Stash;
+
+our (@ISA, $this_app, @EXPORT, $NoAction, $SYSNAME, $SYSVERS);
 
 @ISA=qw(Exporter CAF::Object);
 
@@ -370,4 +371,3 @@ sub template
 
 #+#############################################################################
 1;
-

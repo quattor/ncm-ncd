@@ -24,15 +24,11 @@ BEGIN {
 
 package ncd;
 
-use CAF::Application;
-use CAF::Reporter;
+use parent qw(CAF::Application CAF::Reporter);
 use LC::Exception qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
 use strict;
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
-use vars qw(@ISA);
-
-@ISA = qw(CAF::Application CAF::Reporter);
 
 #
 # Public Methods/Functions for CAF

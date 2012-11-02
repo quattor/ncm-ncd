@@ -6,10 +6,11 @@
 package NCM::Check;
 
 use strict;
-use vars qw(@ISA $this_app);
 use LC::Exception qw (SUCCESS throw_error throw_warning);
 use LC::Check;
 
+
+our (@ISA, $this_app);
 @ISA=qw(LC::Check);
 
 *this_app = \$main::this_app;
@@ -324,4 +325,3 @@ $Id: Check.pm.cin,v 1.6 2008/06/16 14:12:31 poleggi Exp $
 
 #+#############################################################################
 1;
-

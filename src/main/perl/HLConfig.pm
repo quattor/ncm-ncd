@@ -7,21 +7,24 @@ package NCM::HLConfig;
 require Exporter;
 
 # Only make callable functions visible externally
-@ISA       = qw(Exporter);
-@EXPORT_OK = qw($SOURCE %SchemaMap CreateSub Profile_URL);
+our @ISA       = qw(Exporter);
+our @EXPORT_OK = qw($SOURCE %SchemaMap CreateSub Profile_URL);
 
 use DBI;
 use Sys::Hostname;
 
+
 # Global variables
-use vars qw($DEBUG);
-$DEBUG = 0;
 $cdbcfg = undef;
 $cm = undef;
 $ec = undef;    # Error Context for CDB code
 $xml_loaded = "NULL";
 $xmltree = undef;
 $LOCKED_CONFIG = 0;
+
+our $DEBUG;
+$DEBUG = 0;
+
 
 %SchemaMap =
     (
@@ -497,4 +500,3 @@ optionally another I<machine>, deriving the information from CDB configuration d
 
   Tim Smith <Tim.Smith@cern.ch>
   Jan van Eldik <Jan.van.Eldik@cern.ch>
-

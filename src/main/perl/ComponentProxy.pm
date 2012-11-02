@@ -7,7 +7,6 @@
 package NCD::ComponentProxy;
 
 use strict;
-use vars qw(@ISA $this_app);
 use CAF::ReporterMany;
 use LC::Exception qw (SUCCESS throw_error);
 
@@ -18,6 +17,8 @@ use CAF::Log;
 use LC::Check;
 
 use File::Path;
+
+our (@ISA, $this_app);
 
 *this_app = \$main::this_app;
 

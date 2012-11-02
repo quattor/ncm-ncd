@@ -6,11 +6,12 @@
 package NCD::ComponentProxyList;
 
 use strict;
-use vars qw(@ISA $this_app);
 use CAF::ReporterMany;
 use LC::Exception qw (SUCCESS throw_error);
 use CAF::Object;
 use NCD::ComponentProxy;
+
+our (@ISA, $this_app);
 
 *this_app = \$main::this_app;
 
@@ -471,4 +472,3 @@ sub _initialize {
 
 #+#############################################################################
 1;
-
