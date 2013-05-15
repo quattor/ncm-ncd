@@ -290,58 +290,46 @@ sub _topoSort {
 #
 # sort the components according to dependencies
 #
-sub _sortComponents {
-  my ($self,$unsortedcompProxyList)=@_;
+sub _sortComponents
+{
+    my ($self,$unsortedcompProxyList)=@_;
 
-  $self->verbose("sorting components according to dependencies...");
+    $self->verbose("sorting components according to dependencies...");
 
-  my %comps;
-  %comps=map {$_->name(),$_} @$unsortedcompProxyList;
-  my $after={};
-  my $comp;
-  my $prev=undef;
-  foreach $comp (@$unsortedcompProxyList) {
-    my $name=$comp->name();
-    $after->{$name} ||= {};
-    my @pre=@{$comp->getPreDependencies()};
-    my @post=@{$comp->getPostDependencies()};
-    if (scalar(@pre)||scalar(@post)) {
-      foreach (@pre) {
-	unless (defined $comps{$_}) {
-	  unless ($this_app->option('nodeps')) {
-	    $self->error('pre-requisite for component "'.$name.'" does not exist: '.$_);
-	    return undef;
-	  }
-	} else {
-	  $after->{$_}->{$name}=1;
-	}
-      }
-      foreach (@post) {
-	unless (defined $comps{$_}) {
-	  unless ($this_app->option('nodeps')) {
-	    $self->error('pre-requisite for component "'.$name.'"  does not exist: '.$_);
-	    return undef;
-	  }
-	  $self->error('post-requisite for component  "'.$name.'" does not exist: '.$_);
-	  return undef;
-	}
-	$after->{$name}->{$_}=1;
-      }
-    } else {
-#      $after->{$prev}->{$name}=1 if (defined $prev);
-      $prev=$name;
+    my %comps;
+    %comps=map {$_->name(),$_} @$unsortedcompProxyList;
+    my $after={};
+    foreach my $comp (@$unsortedcompProxyList) {
+        my $name=$comp->name();
+        $after->{$name} ||= {};
+        my @pre=@{$comp->getPreDependencies()};
+        my @post=@{$comp->getPostDependencies()};
+        foreach my $p (@pre) {
+            if (defined $comps{$p}) {
+                $after->{$p}->{$name} = 1;
+            } elsif (!$this_app->option('nodeps')) {
+                $self->error(qq{pre-requisite for component "$name" does not exist: $p});
+                return undef;
+            }
+        }
+        foreach my $p (@post) {
+            if (!defined $comps{$p} && ! $this_app->option('nodeps')) {
+                $self->error(qq{post-requisite for component "$name"  does not exist: $p});
+                return undef;
+            }
+            $after->{$name}->{$p}=1;
+        }
     }
-  }
-  my $visited={};
-  my $sorted=[()];
-  foreach my $c (sort keys (%$after)) {
-    unless ($self->_topoSort($c,$after,$visited,{},$sorted,1)) {
-      $self->error("cannot sort dependencies");
-      return undef;
+    my $visited={};
+    my $sorted=[()];
+    foreach my $c (sort keys (%$after)) {
+        unless ($self->_topoSort($c,$after,$visited,{},$sorted,1)) {
+            $self->error("cannot sort dependencies");
+            return undef;
+        }
     }
-  }
-  my @sortedcompProxyList=map {$comps{$_}} @$sorted;
-  return \@sortedcompProxyList;
+    my @sortedcompProxyList=map {$comps{$_}} @$sorted;
+    return \@sortedcompProxyList;
 }
 
 
