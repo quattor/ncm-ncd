@@ -13,6 +13,9 @@
 # http://www.debian-administration.org/article/317/An_introduction_to_bash_completion_part_2
 #
 
+# If the option under completion starts with a dash, autocompletes an
+# option name (i.e, "--configure").  Otherwise, autocompletes a
+# component name.
 _ncm_ncd()
 {
     local opts="--configure --verbose --debug --all --list --help"
