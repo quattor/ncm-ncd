@@ -35,3 +35,6 @@ _ncm_ncd()
 }
 
 complete -F _ncm_ncd ncm-ncd
+complete -F _ncm_ncd quattor-configure
+complete -F _ncm_ncd quattor-list
+complete -F _ncm-ncd quattor-unconfigure
