@@ -36,7 +36,8 @@ use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 
 sub app_options() {
   # these options complement the ones defined in CAF::Application
-  push(my @array,
+  my @array;
+  push(@array,
 
        { NAME    => 'configure',
 	 HELP    => 'run the configure method on the components',
@@ -119,7 +120,11 @@ sub app_options() {
        { NAME => "template-path=s",
 	 HELP => 'store for Template Toolkit files',
 	 DEFAULT => '/usr/share/templates/quattor'
-       }
+       },
+
+       { NAME => "include=s",
+	 HELP => 'a colon-seperated list of directories to include in search path',
+	 DEFAULT => undef },
 
       );
 
@@ -364,6 +369,10 @@ if ($this_app->option('configure') && $this_app->option('unconfigure')) {
   $this_app->finish(-1);
 }
 
+# add include directories to perl include search path
+if ($this_app->option('include')) {
+	unshift(@INC, split(/:+/, $this_app->option('include')));
+}
 
 # set local NVA API lock TBD
 unless ($this_app->setLockCCMConfig(
