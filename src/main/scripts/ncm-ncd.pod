@@ -158,6 +158,10 @@ Suppress application output to standard output.
 
 Do not actually perform operations.
 
+=item --include <directories>
+
+A colon-seperated list of directories to include in search path for ncm-components
+
 =back
 
 =head1 CONFIGURATION FILE
