@@ -10,24 +10,18 @@
 #
 # Beginning sequence for EDG initialization
 #
-BEGIN {
-
-    # use perl libs in /usr/lib/perl
-  unshift(@INC, '/var/ncm/lib/perl');
-  unshift(@INC, '/usr/lib/perl');
-  unshift(@INC,'/opt/edg/lib/perl');
-}
-
+use lib '/usr/lib/perl';
 #------------------------------------------------------------
 # Application
 #------------------------------------------------------------
 
 package ncd;
 
+use strict;
+use warnings;
 use parent qw(CAF::Application CAF::Reporter);
 use LC::Exception qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
-use strict;
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 
 #

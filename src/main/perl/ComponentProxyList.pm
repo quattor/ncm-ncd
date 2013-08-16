@@ -82,13 +82,26 @@ sub reportComponents {
   return SUCCESS;
 }
 
+#
+#
+#
+sub pre_config_actions
+{
+    my $self = shift;
+}
 
+sub post_config_actions
+{
+    my ($self, $report) = @_;
+}
 
 sub executeConfigComponents {
   my $self=shift;
 
   $self->info("executing configure on components....");
   $self->report();
+
+  $self->pre_config_actions();
 
   my %err_comps_list;
   my %warn_comps_list;
@@ -166,6 +179,8 @@ sub executeConfigComponents {
 
   $global_status{'ERR_COMPS'}=\%err_comps_list;
   $global_status{'WARN_COMPS'}=\%warn_comps_list;
+
+  $self->post_config_actions(\%global_status);
 
   return \%global_status;
 }
@@ -455,3 +470,4 @@ sub _initialize {
 
 #+#############################################################################
 1;
+3
