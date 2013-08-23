@@ -131,99 +131,101 @@ sub post_config_actions
     return 1;
 }
 
+# Runs all $components, potentially obeying $nodeps.  Fills in $status
+# with the results of the executions: which components failed, which
+# had warnings, and so on.
+sub run_all_components
+{
+    my ($self, $components, $nodeps, $status) = @_;
+
+    my (%failed_components, %err_comps_list, %warn_comps_list);
+
+    foreach my $comp (@{$components}) {
+        $self->report();
+        $self->info('running component: '.$comp->name());
+        $self->report('---------------------------------------------------------');
+        my @broken_dep=();
+        foreach my $predep (@{$comp->getPreDependencies()}) {
+            if (!$nodeps && $failed_components{$predep}) {
+                push (@broken_dep,$predep);
+                $self->debug(1, 'predependencies broken for component ',
+                             $comp->name(), ': ', $predep);
+            }
+        }
+        if (@broken_dep) {
+            my $err = sprintf('Cannot run component: %s as pre-dependencies failed: %s',
+                              $comp->name(), join(",", @broken_dep));
+            $self->error($err);
+            $status->{'ERRORS'}++;
+            $err_comps_list{$comp->name()}=1;
+            $self->set_state($comp->name(), $err);
+        } else {
+            # we set the state to "unknown" (in effect) just before we
+            # run configure, so that the state will reflect that this component
+            # has still not run to completion. All code-paths following this
+            # MUST either set_state or clear_state.
+            $self->set_state($comp->name(), "");
+
+            my $ret=$comp->executeConfigure();
+            if (!defined($ret)) {
+                my $err = "cannot execute configure on component " . $comp->name();
+                $self->error($err);
+                $status->{'ERRORS'}++;
+                $err_comps_list{$comp->name()}=1;
+                $failed_components{$comp->name()}=1;
+                $self->set_state($comp->name(), $err);
+            } else {
+                if ($ret->{'ERRORS'}) {
+                    $err_comps_list{$comp->name()}=$ret->{'ERRORS'};
+                    $failed_components{$comp->name()}=1;
+                    $self->set_state($comp->name(), $ret->{ERRORS});
+                } else {
+                    $self->clear_state($comp->name());
+                }
+                if ($ret->{'WARNINGS'}) {
+                    $warn_comps_list{$comp->name()}=$ret->{'WARNINGS'};
+                }
+
+                $status->{'ERRORS'}   += $ret->{'ERRORS'};
+                $status->{'WARNINGS'} += $ret->{'WARNINGS'};
+            }
+        }
+    }
+    $status->{'ERR_COMPS'}=\%err_comps_list;
+    $status->{'WARN_COMPS'}=\%warn_comps_list;
+
+}
+
 sub executeConfigComponents {
     my $self=shift;
 
     $self->info("executing configure on components....");
     $self->report();
 
-    my %err_comps_list;
-    my %warn_comps_list;
-    my %global_status=(
+    my $global_status= {
         'ERRORS'=>0,
         'WARNINGS'=>0
-    );
+    };
 
     if (!$self->pre_config_actions()) {
-        $global_status{ERRORS}++;
-        return \%global_status;
+        $global_status->{ERRORS}++;
+        return $global_status;
     }
 
     my $sortedList=$self->_sortComponents($self->{'CLIST'});
-    unless (defined $sortedList) {
+    if (!defined($sortedList)) {
         $self->error("cannot sort components according to dependencies");
-        $global_status{'ERRORS'}++;
+        $global_status->{'ERRORS'}++;
     } else {
-        # execute now all components, leaving out ones with broken pre deps
-
-        my $OK=1;
-        my $FAIL=2;
-        my %exec_status=map {$_->name(),0} @{$sortedList};
-
-        my $comp;
-        foreach $comp (@{$sortedList}) {
-            $self->report();
-            $self->info('running component: '.$comp->name());
-            $self->report('---------------------------------------------------------');
-            my @broken_dep=();
-            my $predep;
-            foreach $predep (@{$comp->getPreDependencies()}) {
-                if (!$this_app->option('nodeps') &&
-                    $exec_status{$predep} != $OK) {
-                    push (@broken_dep,$predep);
-                    $self->debug(1, 'predependencies broken for component '.$comp->name().': '.$predep);
-                }
-            }
-            if (@broken_dep) {
-                my $err = 'cannot run component: '.$comp->name().
-                    ' as pre-dependencies failed: '.join(',',@broken_dep);
-                $self->error($err);
-                $global_status{'ERRORS'}++;
-                $err_comps_list{$comp->name()}=1;
-                $self->set_state($comp->name(), $err);
-            } else {
-                # we set the state to "unknown" (in effect) just before we
-                # run configure, so that the state will reflect that this component
-                # has still not run to completion. All code-paths following this
-                # MUST either set_state or clear_state.
-                $self->set_state($comp->name(), "");
-
-                my $ret=$comp->executeConfigure();
-                unless (defined $ret) {
-                    my $err = "cannot execute configure on component " . $comp->name();
-                    $self->error($err);
-                    $global_status{'ERRORS'}++;
-                    $err_comps_list{$comp->name()}=1;
-                    $exec_status{$comp->name()}=$FAIL;
-                    $self->set_state($comp->name(), $err);
-                } else {
-                    if ($ret->{'ERRORS'}) {
-                        $err_comps_list{$comp->name()}=$ret->{'ERRORS'};
-                        $exec_status{$comp->name()}=$FAIL;
-                        $self->set_state($comp->name(), $ret->{ERRORS});
-                    } else {
-                        $exec_status{$comp->name()}=$OK;
-                        $self->clear_state($comp->name());
-                    }
-                    if ($ret->{'WARNINGS'}) {
-                        $warn_comps_list{$comp->name()}=$ret->{'WARNINGS'};
-                    }
-
-                    $global_status{'ERRORS'}   += $ret->{'ERRORS'};
-                    $global_status{'WARNINGS'} += $ret->{'WARNINGS'};
-                }
-            }
-        }
+        $self->run_all_components($sortedList, $this_app->option("nodeps"),
+                                  $global_status);
     }
 
-    $global_status{'ERR_COMPS'}=\%err_comps_list;
-    $global_status{'WARN_COMPS'}=\%warn_comps_list;
-
-    if (!$self->post_config_actions(\%global_status)) {
-        $global_status{ERRORS}++;
+    if (!$self->post_config_actions($global_status)) {
+        $global_status->{ERRORS}++;
     }
 
-    return \%global_status;
+    return $global_status;
 }
 
 sub get_statefile {
