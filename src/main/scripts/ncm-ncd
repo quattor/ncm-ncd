@@ -108,8 +108,8 @@ sub app_options() {
 	 DEFAULT => undef },
 
        { NAME    => 'facility=s',
-    HELP    => 'facility name for syslog',
-    DEFAULT => 'local1' },
+         HELP    => 'facility name for syslog',
+         DEFAULT => 'local1' },
 
        { NAME => "template-path=s",
 	 HELP => 'store for Template Toolkit files',
@@ -120,6 +120,14 @@ sub app_options() {
 	 HELP => 'a colon-seperated list of directories to include in search path',
 	 DEFAULT => undef },
 
+       { NAME => "pre-hook=s",
+         HELP => "Command line to run as pre-hook" },
+       { NAME => "pre-hook-timeout=i",
+         HELP => "Time out for the pre hook" },
+       { NAME => "post-hook=s",
+         HELP => "Command line to run as post hook" },
+       { NAME => "post-hook-timeout=i",
+         HELP => "Time out for hte post hook" },
       );
 
     return \@array;
@@ -451,6 +459,10 @@ unless (scalar(@component_names)) {
 
 my $compList=NCD::ComponentProxyList->new($this_app->getCCMConfig(),$skip,
 					  @component_names);
+$compList->set_pre_hook($this_app->option("pre-hook"));
+$compList->set_pre_hook_timeout($this_app->option("pre-hook-timeout"));
+$compList->set_post_hook($this_app->option("post-hook"));
+$compList->set_post_hook_timeout($this_app->option("post-hook-timeout"));
 unless (defined $compList) {
   $ec->ignore_error();
   $this_app->error("cannot get component(s)");
