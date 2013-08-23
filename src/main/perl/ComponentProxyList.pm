@@ -9,14 +9,14 @@ use strict;
 use LC::Exception qw (SUCCESS throw_error);
 use parent qw(CAF::Object CAF::ReporterMany);
 use NCD::ComponentProxy;
+use JSON::XS;
+use CAF::Process;
 
 our $this_app;
 
 *this_app = \$main::this_app;
 
 my $ec=LC::Exception::Context->new->will_store_errors;
-
-
 
 =pod
 
@@ -82,17 +82,53 @@ sub reportComponents {
   return SUCCESS;
 }
 
+# Run the pre-config hook.  The command line is specified in the
+# PRE_HOOK attribute, and its timeout in the PRE_HOOK_TIMEOUT.
 #
-#
-#
+# pre-config hooks take no input
 sub pre_config_actions
 {
     my $self = shift;
+
+    return 1 if !$self->{PRE_HOOK};
+
+    my %opts = (log => $self);
+    $opts{timeout} = $self->{PRE_HOOK_TIMEOUT} if $self->{PRE_HOOK_TIMEOUT};
+
+    my $proc = CAF::Process->new([$self->{PRE_HOOK}], %opts);
+    $proc->execute();
+
+    if ($?) {
+        $self->error("Failed to run pre-hook $self->{PRE_HOOK}");
+        return 0;
+    }
+
+    return 1;
 }
 
+# Run the post_config actions.  The command line and the timeout are
+# passed as attributes to $self.  The other argument is the summary of
+# errors and warnings, that will be serialized to JSON and passed to
+# the hook as its standard input.
 sub post_config_actions
 {
     my ($self, $report) = @_;
+
+    return 1 if !$self->{POST_HOOK};
+
+    my %opts = (log => $self,
+                stdin => encode_json($report));
+    $opts{timeout} = $self->{POST_HOOK_TIMEOUT} if $self->{POST_HOOK_TIMEOUT};
+
+    my $proc = CAF::Process->new([$self->{POST_HOOK}], %opts);
+    $proc->execute();
+
+    if ($?) {
+        $self->error("Failed to run post-hook $self->{POST_HOOK}");
+        return 0;
+    }
+
+    return 1;
 }
 
 sub executeConfigComponents {
@@ -101,14 +137,17 @@ sub executeConfigComponents {
   $self->info("executing configure on components....");
   $self->report();
 
-  $self->pre_config_actions();
-
   my %err_comps_list;
   my %warn_comps_list;
   my %global_status=(
 		     'ERRORS'=>0,
 		     'WARNINGS'=>0
 		    );
+
+  if (!$self->pre_config_actions()) {
+      $global_status{ERRORS}++;
+      return \%global_status;
+  }
 
   my $sortedList=$self->_sortComponents($self->{'CLIST'});
   unless (defined $sortedList) {
@@ -180,7 +219,9 @@ sub executeConfigComponents {
   $global_status{'ERR_COMPS'}=\%err_comps_list;
   $global_status{'WARN_COMPS'}=\%warn_comps_list;
 
-  $self->post_config_actions(\%global_status);
+  if (!$self->post_config_actions(\%global_status)) {
+      $global_status{ERRORS}++;
+  }
 
   return \%global_status;
 }
@@ -445,6 +486,25 @@ sub _getComponents {
 }
 
 
+no strict 'refs';
+
+=pod
+
+=item C<set_{pre,post}_hook{,_timeout}>
+
+Set the command line and timeouts for pre and post hooks
+
+=cut
+
+
+foreach my $field (qw(pre_hook pre_hook_timeout post_hook post_hook_timeout)) {
+    *{"set_$field"} = sub {
+                       my ($self, $value) = @_;
+                       $self->{uc($field)} = $value;
+                   };
+}
+
+use strict 'refs';
 
 =pod
 
@@ -468,6 +528,7 @@ sub _initialize {
 
 
 
+
+
 #+#############################################################################
 1;
-3

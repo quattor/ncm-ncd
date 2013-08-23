@@ -11,8 +11,8 @@ use CAF::Object;
 
 $CAF::Object::NoAction = 1;
 
-my $mock = Test::MockModule->new("NCD::ComponentProxy");
-
+my $mockcomponent = Test::MockModule->new("NCD::ComponentProxy");
+my $mocklist = Test::MockModule->new("NCD::ComponentProxyList");
 
 sub long_successful_configure
 {
@@ -39,7 +39,9 @@ sub execute_dependency_failed
     return {ERRORS => 1, WARNINGS => 0};
 }
 
-$mock->mock("executeConfigure", \&long_successful_configure);
+$mockcomponent->mock("executeConfigure", \&long_successful_configure);
+$mocklist->mock("pre_config_actions", 1);
+$mocklist->mock("post_config_actions", 1);
 
 =pod
 
@@ -104,7 +106,7 @@ is(scalar(keys(%{$err->{WARN_COMPS}})), 2,
 
 =cut
 
-$mock->mock("executeConfigure", \&long_failed_configure);
+$mockcomponent->mock("executeConfigure", \&long_failed_configure);
 
 $err = $cl->executeConfigComponents();
 is($err->{ERRORS}, 2, "All failed components are detected");
@@ -117,7 +119,7 @@ is(scalar(keys(%{$err->{ERR_COMPS}})), 2,
 
 =cut
 
-$mock->mock("executeConfigure", \&execute_dependency_failed);
+$mockcomponent->mock("executeConfigure", \&execute_dependency_failed);
 
 $cfg = get_config_for_profile("execute-config-deps");
 
@@ -125,6 +127,38 @@ $cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent", "anotherone");
 
 $err = $cl->executeConfigComponents();
 is($err->{ERRORS}, 2, "Errors reported when pre-dependencies fail");
+
+
+=pod
+
+=back
+
+=head2 Hooks
+
+We have already tested when there are no hooks or they succeed.  Now
+we must test what happens if the hooks fail
+
+=over
+
+=item * Post-config hook fails
+
+=back
+
+=cut
+
+$mocklist->mock("post_config_actions", 0);
+
+$err = $cl->executeConfigComponents();
+is($err->{ERRORS}, 3, "Errors on post_config hooks are reported");
+
+$mocklist->mock("pre_config_actions", 0);
+$mockcomponent->mock("executeConfigure", sub {
+                         ok(0, "This method shouldn't be called at this stage");
+                         return {ERRORS => 0, WARNINGS => 0};
+                     });
+
+$err = $cl->executeConfigComponents();
+is($err->{ERRORS}, 1, "If pre_config hook fails no components are executed");
 
 
 done_testing();
