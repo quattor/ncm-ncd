@@ -38,7 +38,7 @@ my $cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent");
 
 is($cl->pre_config_actions(), 1,
    "PRE executor succeeds when nothing is specified");
-is($cl->post_config_actions({}), 1,
+is($cl->post_config_actions(undef, undef, {}), 1,
    "POST executor succeeds when nothing is specified");
 
 =pod
@@ -49,17 +49,15 @@ Succeed and no timeout is passed.
 
 =cut
 
-$cl->{PRE_HOOK} = $PRE_HOOK;
-
-is($cl->pre_config_actions(), 1, "PRE hook execution succeeds");
+is($cl->pre_config_actions($PRE_HOOK), 1, "PRE hook execution succeeds");
 
 my $cmd = get_command($PRE_HOOK);
 
 ok($cmd, "The pre hook is actually executed");
 is($cmd->{method}, "execute", "The pre hook is execute-d");
 
-$cl->{POST_HOOK} = $POST_HOOK;
-is($cl->post_config_actions({ERRORS => 3}), 1, "POST hooks execution succeeds");
+is($cl->post_config_actions($POST_HOOK, undef, {ERRORS => 3}), 1,
+   "POST hooks execution succeeds");
 $cmd = get_command($POST_HOOK);
 ok($cmd, "The pre hook is actually executed");
 is($cmd->{method}, "execute", "The post hook is execute-d");
@@ -77,17 +75,14 @@ Check that the timeout is passed to the CAF object
 
 =cut
 
-$cl->{PRE_HOOK_TIMEOUT} = 1;
-$cl->{POST_HOOK_TIMEOUT} = 2;
-
-is($cl->pre_config_actions(), 1,
+is($cl->pre_config_actions($PRE_HOOK, 1), 1,
    "Timeouts don't affect exit status of the pre hook");
 $cmd = get_command($PRE_HOOK);
 
 is($cmd->{object}->{OPTIONS}->{timeout}, 1,
    "PRE Timeout passed to the underlying object");
 
-is($cl->post_config_actions({ERRORS => 3}), 1,
+is($cl->post_config_actions($POST_HOOK, 2, {ERRORS => 3}), 1,
    "Timeouts don't affect the exit status of the post hook");
 
 $cmd = get_command($POST_HOOK);
@@ -105,19 +100,8 @@ Errors in executions are reported and propagated to the callers
 set_command_status($PRE_HOOK, 1);
 set_command_status($POST_HOOK, 1);
 
-is($cl->pre_config_actions(), 0, "Failure in PRE hook is reported");
-is($cl->pre_config_actions({}), 0, "Failure in POST hook is reported");
-
-=pod
-
-=head2 Setter methods
-
-Trivial tests, that fit close to the hooks themselves.
-
-=cut
-
-$cl->set_pre_hook("hello");
-is($cl->{PRE_HOOK}, "hello", "Generated setters work");
-
+is($cl->pre_config_actions($PRE_HOOK), 0, "Failure in PRE hook is reported");
+is($cl->post_config_actions($POST_HOOK, undef, {}), 0,
+   "Failure in POST hook is reported");
 
 done_testing();

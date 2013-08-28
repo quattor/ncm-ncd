@@ -82,20 +82,17 @@ sub reportComponents {
     return SUCCESS;
 }
 
-# Run the pre-config hook.  The command line is specified in the
-# PRE_HOOK attribute, and its timeout in the PRE_HOOK_TIMEOUT.
-#
-# pre-config hooks take no input
+# Run the pre-config $hook, possibly timing out after $timeout seconds
 sub pre_config_actions
 {
-    my $self = shift;
+    my ($self, $hook, $timeout) = @_;
 
-    return 1 if !$self->{PRE_HOOK};
+    return 1 if !$hook;
 
     my %opts = (log => $self);
-    $opts{timeout} = $self->{PRE_HOOK_TIMEOUT} if $self->{PRE_HOOK_TIMEOUT};
+    $opts{timeout} = $timeout if $timeout;
 
-    my $proc = CAF::Process->new([$self->{PRE_HOOK}], %opts);
+    my $proc = CAF::Process->new([$hook], %opts);
     $proc->execute();
 
     if ($?) {
@@ -106,21 +103,21 @@ sub pre_config_actions
     return 1;
 }
 
-# Run the post_config actions.  The command line and the timeout are
-# passed as attributes to $self.  The other argument is the summary of
-# errors and warnings, that will be serialized to JSON and passed to
-# the hook as its standard input.
+# Run the post_config $hook, maybe timing out after $timeout seconds.
+# The $report argument is the summary of errors and warnings, that
+# will be serialized to JSON and passed to the hook as its standard
+# input.
 sub post_config_actions
 {
-    my ($self, $report) = @_;
+    my ($self, $hook, $timeout, $report) = @_;
 
-    return 1 if !$self->{POST_HOOK};
+    return 1 if !$hook;
 
     my %opts = (log => $self,
                 stdin => encode_json($report));
-    $opts{timeout} = $self->{POST_HOOK_TIMEOUT} if $self->{POST_HOOK_TIMEOUT};
+    $opts{timeout} = $timeout if $timeout;
 
-    my $proc = CAF::Process->new([$self->{POST_HOOK}], %opts);
+    my $proc = CAF::Process->new([$hook], %opts);
     $proc->execute();
 
     if ($?) {
@@ -197,7 +194,7 @@ sub run_all_components
 }
 
 sub executeConfigComponents {
-    my $self=shift;
+    my ($self, $pre_hook, $pre_timeout, $post_hook, $post_timeout)  = @_;
 
     $self->info("executing configure on components....");
     $self->report();
@@ -207,7 +204,7 @@ sub executeConfigComponents {
         'WARNINGS'=>0
     };
 
-    if (!$self->pre_config_actions()) {
+    if (!$self->pre_config_actions($pre_hook, $pre_timeout)) {
         $global_status->{ERRORS}++;
         return $global_status;
     }
@@ -221,7 +218,7 @@ sub executeConfigComponents {
                                   $global_status);
     }
 
-    if (!$self->post_config_actions($global_status)) {
+    if (!$self->post_config_actions($post_hook, $post_timeout, $global_status)) {
         $global_status->{ERRORS}++;
     }
 
@@ -488,26 +485,6 @@ sub _getComponents {
 }
 
 
-no strict 'refs';
-
-=pod
-
-=item C<set_{pre,post}_hook{,_timeout}>
-
-Set the command line and timeouts for pre and post hooks
-
-=cut
-
-
-foreach my $field (qw(pre_hook pre_hook_timeout post_hook post_hook_timeout)) {
-    *{"set_$field"} = sub {
-        my ($self, $value) = @_;
-        $self->{uc($field)} = $value;
-    };
-}
-
-use strict 'refs';
-
 =pod
 
 =head2 Private methods
@@ -527,10 +504,6 @@ sub _initialize {
 
     return $self->_getComponents();
 }
-
-
-
-
 
 #+#############################################################################
 1;
