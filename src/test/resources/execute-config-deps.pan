@@ -10,3 +10,7 @@ prefix "/software/components";
 "anotherone/dependencies/pre" = list("acomponent");
 "anotherone/dependencies/post" = list();
 "anotherone/dispatch"  = true;
+"yetonemore/dependencies/pre" = list();
+"yetonemore/dependencies/post" = list("anotherone");
+"yetonemore/dispatch" = true;
+"yetonemore/active" = true;
