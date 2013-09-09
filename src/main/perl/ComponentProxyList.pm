@@ -193,6 +193,10 @@ sub run_all_components
 
 }
 
+# Executes all the components listed in $self, finding (and adding)
+# their pre and post-dependencies, in the correct order.  It will also
+# execute the $pre_hook with an optional $pre_timeout and the
+# $post_hook with a $post_timeout.
 sub executeConfigComponents {
     my ($self, $pre_hook, $pre_timeout, $post_hook, $post_timeout)  = @_;
 
