@@ -123,11 +123,13 @@ sub app_options() {
        { NAME => "pre-hook=s",
          HELP => "Command line to run as pre-hook" },
        { NAME => "pre-hook-timeout=i",
-         HELP => "Time out for the pre hook" },
+         HELP => "Time out for the pre hook, in seconds",
+         DEFAULT => 300 },
        { NAME => "post-hook=s",
          HELP => "Command line to run as post hook" },
        { NAME => "post-hook-timeout=i",
-         HELP => "Time out for hte post hook" },
+         HELP => "Time out for hte post hook, in seconds",
+         DEFAULT => 300 },
       );
 
     return \@array;

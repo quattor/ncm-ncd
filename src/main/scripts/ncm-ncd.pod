@@ -136,7 +136,7 @@ components that succeeded, failed or had warnings.
 
 Timeouts, in seconds, for the C<--pre-hook> and C<--post-hook>
 
-By default they don't time out.
+A value of 0 means no time out.  By default they time out after 5 minutes.
 
 =back
 
