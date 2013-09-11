@@ -124,6 +124,20 @@ Does nothing but list all found components, in the following format:
 
 name - active? - installed?
 
+=item --pre-hook, --post-hook
+
+Hooks to be executed before any component is run or after all
+components have been executed.
+
+The C<post-hook> will receive a JSON object via stdin with the
+components that succeeded, failed or had warnings.
+
+=item --pre-hook-timeout, --post-hook-timeout
+
+Timeouts, in seconds, for the C<--pre-hook> and C<--post-hook>
+
+A value of 0 means no time out.  By default they time out after 5 minutes.
+
 =back
 
 =head2 Other Options
@@ -187,4 +201,3 @@ Visit B<http://quattor.org> for more information on the quattor
 toolsuite.
 
 =cut
-

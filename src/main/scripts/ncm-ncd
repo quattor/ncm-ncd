@@ -10,24 +10,18 @@
 #
 # Beginning sequence for EDG initialization
 #
-BEGIN {
-
-    # use perl libs in /usr/lib/perl
-  unshift(@INC, '/var/ncm/lib/perl');
-  unshift(@INC, '/usr/lib/perl');
-  unshift(@INC,'/opt/edg/lib/perl');
-}
-
+use lib '/usr/lib/perl';
 #------------------------------------------------------------
 # Application
 #------------------------------------------------------------
 
 package ncd;
 
+use strict;
+use warnings;
 use parent qw(CAF::Application CAF::Reporter);
 use LC::Exception qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
-use strict;
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 
 #
@@ -114,8 +108,8 @@ sub app_options() {
 	 DEFAULT => undef },
 
        { NAME    => 'facility=s',
-    HELP    => 'facility name for syslog',
-    DEFAULT => 'local1' },
+         HELP    => 'facility name for syslog',
+         DEFAULT => 'local1' },
 
        { NAME => "template-path=s",
 	 HELP => 'store for Template Toolkit files',
@@ -126,6 +120,16 @@ sub app_options() {
 	 HELP => 'a colon-seperated list of directories to include in search path',
 	 DEFAULT => undef },
 
+       { NAME => "pre-hook=s",
+         HELP => "Command line to run as pre-hook" },
+       { NAME => "pre-hook-timeout=i",
+         HELP => "Time out for the pre hook, in seconds",
+         DEFAULT => 300 },
+       { NAME => "post-hook=s",
+         HELP => "Command line to run as post hook" },
+       { NAME => "post-hook-timeout=i",
+         HELP => "Time out for hte post hook, in seconds",
+         DEFAULT => 300 },
       );
 
     return \@array;
@@ -457,14 +461,19 @@ unless (scalar(@component_names)) {
 
 my $compList=NCD::ComponentProxyList->new($this_app->getCCMConfig(),$skip,
 					  @component_names);
+
+my @args;
+
 unless (defined $compList) {
   $ec->ignore_error();
   $this_app->error("cannot get component(s)");
   $this_app->finish(-1);
+  @args = ($this_app->option("pre-hook"), $this_app->option("pre-hook-timeout"),
+           $this_app->option("post-hook", $this_app->option("post-hook-timeout"));
 }
 
 chdir ('/tmp');
-my $ret=$compList->$method();
+my $ret=$compList->$method(@args);
 my $fun='OK';
 my $exit=0;
 if ($ret->{'ERRORS'}) {
