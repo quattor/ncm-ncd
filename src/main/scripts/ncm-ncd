@@ -468,10 +468,10 @@ unless (defined $compList) {
   $ec->ignore_error();
   $this_app->error("cannot get component(s)");
   $this_app->finish(-1);
-  @args = ($this_app->option("pre-hook"), $this_app->option("pre-hook-timeout"),
-           $this_app->option("post-hook"), $this_app->option("post-hook-timeout"));
 }
 
+@args = ($this_app->option("pre-hook"), $this_app->option("pre-hook-timeout"),
+         $this_app->option("post-hook"), $this_app->option("post-hook-timeout"));
 chdir ('/tmp');
 my $ret=$compList->$method(@args);
 my $fun='OK';
