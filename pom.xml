@@ -6,7 +6,7 @@
   <artifactId>ncm-ncd</artifactId>
 
   <packaging>pom</packaging>
-  <version>13.9.1-SNAPSHOT</version>
+  <version>13.1.2-rc4</version>
   <name>NCD is the frontend for invoking NCM components.</name>
 
   <parent>
