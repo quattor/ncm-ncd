@@ -15,11 +15,16 @@ $CAF::Object::NoAction = 1;
 # component paths or inactive components).  We just ignore these LC
 # exceptions.
 our $EC = LC::Exception::Context->new();
-$EC->error_handler(sub {
-                       my ($e, $ec) = @_;
-                       $ec->has_been_reported(1);
-                   }
-                  );
+
+sub ignore
+{
+    my ($e, $ec) = @_;
+    $ec->has_been_reported(1);
+}
+
+$EC->error_handler(\&ignore);
+$EC->warning_handler(\&ignore);
+
 
 =pod
 
@@ -46,6 +51,7 @@ isa_ok($cmp, "NCD::ComponentProxy", "Active component foo is loaded");
 
 is($cmp->{NAME}, "foo", "Correct name assigned");
 is($cmp->{CONFIG}, $cfg, "Configuration stored in the proxy");
+is($cmp->{MODULE}, $cmp->{NAME}, "Name is used as module if no module is listed");
 
 =pod
 
@@ -60,7 +66,20 @@ is($cmp, undef, "Inactive component bar is not loaded");
 
 =pod
 
-=item * The component doesn't exist
+=item * The component exists and is delegated to another module
+
+A proxy is returned and the name is not the
+
+=cut
+
+$cmp = NCD::ComponentProxy->new("baz", $cfg);
+isa_ok($cmp, "NCD::ComponentProxy", "Delegated component is instanciated");
+is($cmp->{NAME}, "baz", "Correct name assigned");
+is($cmp->{MODULE}, "woof", "Correct module assigned");
+
+=pod
+
+=head2 The component doesn't exist
 
 No proxy is returned
 

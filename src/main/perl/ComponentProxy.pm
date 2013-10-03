@@ -304,14 +304,18 @@ sub _initialize {
     # component itself does however not get loaded yet (this is done on demand
     # by the 'execute' commands)
 
-    my $cdb_entry=$self->{'CONFIG'}->getElement("/software/components/$name");
+    my $cdb_entry=$config->getElement("$_COMP_PREFIX/$name");
     if (!defined($cdb_entry)) {
         $ec->ignore_error();
         $self->error('no such component in node profile: '.$name);
         return undef;
     }
 
-    my $prop=$config->getElement($_COMP_PREFIX.'/'.$name.'/active');
+    $self->{MODULE} = $config->elementExists("$_COMP_PREFIX/$name/ncm-module") ?
+            $config->getElement("$_COMP_PREFIX/$name/ncm-module")->getValue() :
+            $self->{NAME};
+
+    my $prop=$config->getElement("$_COMP_PREFIX/$name/active");
     if (defined ($prop)) {
         my $active=$prop->getBooleanValue();
         if ($active ne 'true') {

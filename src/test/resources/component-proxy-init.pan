@@ -6,3 +6,6 @@ prefix "/software/components";
 "foo/dispatch" = false;
 "bar/active" = false;
 "bar/dispatch" = true;
+"baz/active" = true;
+"baz/dispatch" = true;
+"baz/ncm-module" = "woof";
