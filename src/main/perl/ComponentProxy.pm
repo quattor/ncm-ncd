@@ -342,7 +342,7 @@ loads the component file in a separate namespace (NCM::Component::$name)
 sub _load {
     my $self=shift;
 
-    my $compname=$self->{'NAME'};
+    my $compname=$self->{MODULE};
 
     # try to create the component from configuration information
     # or check that it is pre-installed
