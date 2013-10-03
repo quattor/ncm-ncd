@@ -405,26 +405,30 @@ sub _getComponents {
 
     my @compnames=@{$self->{'NAMES'}};
 
+    my $cfg = $self->{CCM_CONFIG};
+
     unless (scalar (@compnames)) {
-        my $res=$self->{'CCM_CONFIG'}->getElement('/software/components');
+        my $res=$cfg->getElement('/software/components');
         unless (defined $res) {
             $ec->ignore_error();
             $self->error("no components found in profile");
             return undef;
         }
-        my $cname;
         my %els=$res->getHash();
-        foreach $cname (keys %els) {
-            my $prop=$self->{'CCM_CONFIG'}->getElement('/software/components/'.$cname.'/active');
-            unless (defined $prop) {
-                $ec->ignore_error();
-                $self->warn('component '.$cname.
-                                " 'active' flag not found in node profile under /software/components/".$cname."/, skipping");
-                next;
-            } else {
+        foreach my $cname (keys %els) {
+            my $prop=$cfg->getElement("/software/components/$cname/active");
+            my $module = $cname;
+            if (defined $prop) {
                 if ($prop->getBooleanValue() eq 'true') {
-                    push(@compnames,$cname);
+                    if ($cfg->elementExists("/software/components/$cname/ncm-module")) {
+                        $module = $cfg->getValue("/software/components/$cname/ncm-module");
+                    }
+                    push(@compnames,$module);
                 }
+            } else {
+                $ec->ignore_error();
+                $self->warn("component $cname",
+                            " 'active' flag not found in node profile under /software/components/".$cname."/, skipping");
             }
         }
         $self->verbose('active components found in profile: ');
