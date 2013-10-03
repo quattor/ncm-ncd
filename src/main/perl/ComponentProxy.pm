@@ -285,12 +285,13 @@ object initialization (done via new)
 sub _initialize {
     my ($self,$name,$config)=@_;
     $self->setup_reporter();
-    unless (defined $name && defined $config) {
+
+    if (!defined($name) || !defined($config)) {
         throw_error('bad initialization');
         return undef;
     }
 
-    unless ($name =~ m{^([a-zA-Z_]\w+)$}) {
+    if ($name !~ m{^([a-zA-Z_]\w+)$}) {
         throw_error ("Bad component name: $name");
         return undef;
     }
@@ -303,26 +304,25 @@ sub _initialize {
     # component itself does however not get loaded yet (this is done on demand
     # by the 'execute' commands)
 
-    my $cdb_entry=$self->{'CONFIG'}->getElement('/software/components/'.$name);
-    unless (defined $cdb_entry) {
+    my $cdb_entry=$self->{'CONFIG'}->getElement("/software/components/$name");
+    if (!defined($cdb_entry)) {
         $ec->ignore_error();
         $self->error('no such component in node profile: '.$name);
         return undef;
     }
 
     my $prop=$config->getElement($_COMP_PREFIX.'/'.$name.'/active');
-    unless (defined $prop) {
-        $ec->ignore_error();
-        $self->error('component '.$name.
-                             " 'active' flag not found in node profile");
-        return undef;
-    } else {
+    if (defined ($prop)) {
         my $active=$prop->getBooleanValue();
         if ($active ne 'true') {
-            $self->error('component '.$name.' is not active');
+            $self->error("component $name is not active");
             return undef;
         }
         return ($self->_setDependencies());
+    } else {
+        $ec->ignore_error();
+        $self->error("component $name 'active' flag not found in node profile");
+        return undef;
     }
 }
 
@@ -387,13 +387,13 @@ sub _setDependencies {
 
     my ($self)=@_;
 
-    $self->{'PRE_DEPS'}=[()];
-    $self->{'POST_DEPS'}=[()];
+    $self->{PRE_DEPS}=[()];
+    $self->{POST_DEPS}=[()];
 
-    my $conf=$self->{'CONFIG'};
+    my $conf=$self->{CONFIG};
 
-    my $pre_path = $_COMP_PREFIX.'/'.$self->{'NAME'}.'/dependencies/pre';
-    my $post_path = $_COMP_PREFIX.'/'.$self->{'NAME'}.'/dependencies/post';
+    my $pre_path = "$_COMP_PREFIX/$self->{NAME}/dependencies/pre";
+    my $post_path = "$_COMP_PREFIX/$self->{NAME}/dependencies/post";
 
 
     # check if paths are defined (otherwise, no dependencies)
@@ -404,11 +404,11 @@ sub _setDependencies {
         foreach my $el ($res->getList()) {
             push (@{$self->{'PRE_DEPS'}},$el->getStringValue());
         }
-        $self->debug(2,'pre dependencies for component '.$self->{'NAME'}.
-                         ' '.join(',',@{$self->{'PRE_DEPS'}}));
+        $self->debug(2, "pre dependencies for component $self->{'NAME'}: ",
+                     ' '.join(',',@{$self->{PRE_DEPS}}));
     } else {
         $ec->ignore_error();
-        $self->debug(1,'no pre dependencies found for '.$self->{'NAME'});
+        $self->debug(1, "no pre dependencies found for $self->{NAME}");
     }
 
     $res=$conf->getElement($post_path);
@@ -417,11 +417,11 @@ sub _setDependencies {
         foreach $el ($res->getList()) {
             push (@{$self->{'POST_DEPS'}},$el->getStringValue());
         }
-        $self->debug(2,'post dependencies for component '.$self->{'NAME'}.
-                         ' '.join(',',@{$self->{'POST_DEPS'}}));
+        $self->debug(2, "post dependencies for component $self->{NAME}: ",
+                     ' '.join(',',@{$self->{POST_DEPS}}));
     } else {
         $ec->ignore_error();
-        $self->debug(1,'no post dependencies found for '.$self->{'NAME'});
+        $self->debug(1, "no post dependencies found for $self->{NAME}");
     }
     return SUCCESS;
 }
@@ -476,8 +476,10 @@ sub _execute {
         my $noact_supported=undef;
         eval "\$noact_supported=\$NCM::Component::$compname\:\:NoActionSupported;";
         if ($@ || !defined $noact_supported || !$noact_supported) {
-            # noaction is not supported by the component, skip execution in fake mod
-            $self->info("component $compname has NoActionSupported not defined or to false, skipping noaction run");
+            # noaction is not supported by the component, skip
+            # execution in fake mod
+            $self->info("component $compname has NoActionSupported not defined or ",
+                        "false, skipping noaction run");
             $retval= {
                 'WARNINGS'=>0,
                 'ERRORS'=>0
@@ -501,8 +503,7 @@ sub _execute {
 
     %ENV=%ENV_BK;               # restore env and signals
     if ($@) {
-        $self->error("component ".$name.
-                         " executing method $method fails: $@");
+        $self->error("component $name executing method $method fails: $@");
         $retval=undef;
     } else {
         my $comp_EC;
@@ -549,9 +550,9 @@ sub _execute {
         #    return undef;
         #  }
 
-        $self->info('configure on component '.$component->name().' executed, '.
-                        $component->get_errors(). ' errors, '.
-                            $component->get_warnings(). ' warnings');
+        $self->info("configure on component ", $component->name(),
+                    " executed, ", $component->get_errors(), ' errors, ',
+                    $component->get_warnings(), ' warnings');
         $retval= {
             'WARNINGS'=>$component->get_warnings(),
             'ERRORS'=>$component->get_errors()
