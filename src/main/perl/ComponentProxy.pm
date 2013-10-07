@@ -355,36 +355,40 @@ loads the component file in a separate namespace (NCM::Component::$name)
 sub _load {
     my $self=shift;
 
-    my $compname=$self->{MODULE};
+    my $mod = $self->{MODULE};
+    my $name = $self->{NAME};
 
     # try to create the component from configuration information
     # or check that it is pre-installed
     if (!$self->writeComponent()) {
-        unless ($self->hasFile()) {
-                $self->error('component '.$compname.' is not installed in /var/ncm/lib/perl/NCM/Component or /usr/lib/perl/NCM/Component');
+        if (!$self->hasFile()) {
+                $self->error("component $mod is not installed in /var/ncm/lib/perl/NCM/Component or /usr/lib/perl/NCM/Component");
                 return undef;
             }
         }
 
-    eval ("use NCM::Component::$compname;");
+    eval ("use NCM::Component::$mod;");
     if ($@) {
-        $self->error("bad Perl code in NCM::Component::$compname : $@");
+        $self->error("bad Perl code in NCM::Component::$mod : $@");
         return undef;
     }
 
     my $comp_EC;
-    eval "\$comp_EC=\$NCM::Component::$compname\:\:EC;";
+    eval "\$comp_EC=\$NCM::Component::$mod\:\:EC;";
     if ($@ || !defined $comp_EC || ref($comp_EC) ne 'LC::Exception::Context') {
-        $self->error('bad component exception handler: $EC is not defined, not accessible or not of type LC::Exception::Context');
-        $self->error("(note 1: the component package name has to be exactly 'NCM::Component::$compname' - please verify this inside '/usr/lib/perl/NCM/Component/$compname.pm' or '/var/ncm/lib/perl/NCM/Component/$compname.pm')");
-        $self->error('(note 2: $EC has to be declared in "use vars (...)")');
+        $self->error('bad component exception handler: $EC is not defined, ',
+                     'not accessible or not of type LC::Exception::Context');
+        $self->error("(note 1: the component package name has to be exactly ",
+                     "'NCM::Component::$mod' - please verify this inside ",
+                     "'/usr/lib/perl/NCM/Component/$mod.pm' or '/var/ncm/lib/perl/NCM/Component/$mod.pm')");
+        $self->error('(note 2: $EC has to be declared in "our (...)")');
         return undef;
     }
 
     my $component;
-    eval("\$component=NCM::Component::$compname->new(\$compname, \$self)");
+    eval("\$component=NCM::Component::$mod->new(\$name, \$self)");
     if ($@) {
-        $self->error("component $compname instantiation statement fails: $@");
+        $self->error("component $mod instantiation statement fails: $@");
         return undef;
     }
     return $component;
