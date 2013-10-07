@@ -121,6 +121,19 @@ sub name {
     return $self->{'NAME'};
 }
 
+=pod
+
+=item module(): string
+
+returns the module to be loaded for executing the component
+
+=cut
+
+sub module {
+    my $self = shift;
+    return $self->{MODULE};
+}
+
 
 =pod
 
