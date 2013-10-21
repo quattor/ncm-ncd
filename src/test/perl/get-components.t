@@ -27,6 +27,8 @@ test the C<_getComponents> method.
 our $this_app = CAF::Application->new('app');
 $this_app->{CONFIG}->define("nodeps");
 $this_app->{CONFIG}->set('nodeps', 0);
+$this_app->{CONFIG}->define('autodeps');
+$this_app->{CONFIG}->set('autodeps', 0);
 
 my $cfg = get_config_for_profile('get-components-simple');
 
@@ -38,7 +40,13 @@ $cl = NCD::ComponentProxyList->new($cfg, undef, qw(acomponent adep));
 is(scalar(@{$cl->{CLIST}}), 2, "A component and its dependency were loaded");
 
 $cl = NCD::ComponentProxyList->new($cfg, undef, qw(adep));
+is(scalar(@{$cl->{CLIST}}), 1,
+   "Dependencies are not loaded with autodeps == 0");
+
+$this_app->{CONFIG}->set('autodeps', 1);
+$cl = NCD::ComponentProxyList->new($cfg, undef, qw(adep));
 is(scalar(@{$cl->{CLIST}}), 2,
    "Dependencies are loaded even if not directly requested");
+
 
 done_testing();
