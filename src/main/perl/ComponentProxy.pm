@@ -177,7 +177,10 @@ returns 1 if the components perl module is installed, 0 otherwise.
 sub hasFile {
     my $self=shift;
 
-    return -r '/usr/lib/perl/NCM/Component/'.$self->name().'.pm' ? 1:0 ;
+    my $mod = $self->module();
+    $mod =~ s{::}{-}g;
+
+    return -r "/usr/lib/perl/NCM/Component/$mod.pm" ? 1:0 ;
 }
 
 =pod
