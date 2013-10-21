@@ -135,62 +135,57 @@ sub run_all_components
 {
     my ($self, $components, $nodeps, $status) = @_;
 
-    my (%failed_components, %err_comps_list, %warn_comps_list);
+    my (%failed_components);
 
     foreach my $comp (@{$components}) {
         $self->report();
-        $self->info('running component: '.$comp->name());
+        my $name = $comp->name();
+        $self->info("running component: $name");
         $self->report('---------------------------------------------------------');
         my @broken_dep=();
         foreach my $predep (@{$comp->getPreDependencies()}) {
-            if (!$nodeps && $failed_components{$predep}) {
+            if (!$nodeps && exists($status->{ERR_COMPS}->{$predep}))  {
                 push (@broken_dep,$predep);
-                $self->debug(1, 'predependencies broken for component ',
-                             $comp->name(), ': ', $predep);
+                $self->debug(1, "predependencies broken for component $name: $predep");
             }
         }
         if (@broken_dep) {
             my $err = sprintf('Cannot run component: %s as pre-dependencies failed: %s',
-                              $comp->name(), join(",", @broken_dep));
+                              $name, join(",", @broken_dep));
             $self->error($err);
             $status->{'ERRORS'}++;
-            $err_comps_list{$comp->name()}=1;
-            $self->set_state($comp->name(), $err);
+            $status->{ERR_COMPS}->{$name} = 1;
+            $self->set_state($name, $err);
         } else {
             # we set the state to "unknown" (in effect) just before we
             # run configure, so that the state will reflect that this component
             # has still not run to completion. All code-paths following this
             # MUST either set_state or clear_state.
-            $self->set_state($comp->name(), "");
+            $self->set_state($name, "");
 
             my $ret=$comp->executeConfigure();
             if (!defined($ret)) {
-                my $err = "cannot execute configure on component " . $comp->name();
+                my $err = "cannot execute configure on component " . $name;
                 $self->error($err);
                 $status->{'ERRORS'}++;
-                $err_comps_list{$comp->name()}=1;
-                $failed_components{$comp->name()}=1;
-                $self->set_state($comp->name(), $err);
+                $status->{ERR_COMPS}->{$name} = 1;
+                $self->set_state($name, $err);
             } else {
                 if ($ret->{'ERRORS'}) {
-                    $err_comps_list{$comp->name()}=$ret->{'ERRORS'};
-                    $failed_components{$comp->name()}=1;
-                    $self->set_state($comp->name(), $ret->{ERRORS});
+                    $status->{ERR_COMPS}->{$name} = $ret->{ERRORS};
+                    $self->set_state($name, $ret->{ERRORS});
                 } else {
-                    $self->clear_state($comp->name());
+                    $self->clear_state($name);
                 }
                 if ($ret->{'WARNINGS'}) {
-                    $warn_comps_list{$comp->name()}=$ret->{'WARNINGS'};
+                    $status->{WARN_COMPS}->{$name} = $ret->{WARNINGS};
                 }
 
-                $status->{'ERRORS'}   += $ret->{'ERRORS'};
+                $status->{'ERRORS'} += $ret->{'ERRORS'};
                 $status->{'WARNINGS'} += $ret->{'WARNINGS'};
             }
         }
     }
-    $status->{'ERR_COMPS'}=\%err_comps_list;
-    $status->{'WARN_COMPS'}=\%warn_comps_list;
-
 }
 
 # Executes all the components listed in $self, finding (and adding)
@@ -391,6 +386,103 @@ sub _sortComponents
     return \@sortedcompProxyList;
 }
 
+# Returns a hash with all the Perl modules be executed.
+sub get_component_list
+{
+    my ($self) = @_;
+
+    my $cfg = $self->{CCM_CONFIG};
+
+    my %modules;
+
+    my $el = $cfg->getElement("/software/components");
+    if (!$el) {
+        $ec->ignore_error();
+        $self->error("No components found in profile");
+        return;
+    }
+
+    my %cmps = $el->getHash();
+
+    foreach my $cname (keys(%cmps)) {
+        my $active = $cfg->getElement("/software/components/$cname/active");
+
+        if (!$active) {
+            $ec->ignore_error();
+            $self->warning("Active flag not found for component $cname. Skipping");
+            next;
+        }
+
+        next if $active->getValue() ne 'true';
+
+        $modules{$cname} = 1;
+    }
+
+    $self->verbose("Active components in the profile: ",
+                   join(", ", keys(%modules)));
+    return %modules;
+}
+
+sub skip_components
+{
+    my ($self, $comps) = @_;
+
+    my @skp = split(/,/, $self->{SKIP});
+    my %to_skip = map($_ => 1, @skp);
+
+    $self->info("Skipping: ", join(",", @skp));
+
+    foreach my $sk (keys(%to_skip)) {
+        delete($comps->{$sk});
+    }
+    return %to_skip;
+}
+
+sub missing_deps
+{
+    my ($self, $proxy, $comps) = @_;
+
+    my @pre = @{$proxy->getPreDependencies()};
+    my @post = @{$proxy->getPostDependencies()};
+
+    my ($ret, @deps);
+    my $autodeps = $this_app->option("autodeps");
+
+    foreach my $pp (@pre, @post) {
+        if (!exists($comps->{$pp})) {
+            if (!$autodeps) {
+                $ec->ignore_error();
+                $self->error("Unable to satisfy dependency $pp");
+                return undef;
+            }
+            push(@deps, $pp);
+        }
+    }
+    return (1, @deps);
+}
+
+sub get_proxies
+{
+    my ($self, $comps) = @_;
+
+    my @pxs;
+
+    my @c = keys(%$comps);
+    foreach my $comp (@c) {
+        my $px = NCD::ComponentProxy->new($comp, $self->{CCM_CONFIG});
+        if (!$px) {
+            $self->info("Skipping component $comp");
+            next;
+        }
+        my ($ok, @deps) = $self->missing_deps($px, $comps);
+
+        if ($ok) {
+            push(@pxs, $px);
+            push(@c, @deps);
+        }
+    }
+    return @pxs;
+}
 
 #
 # _getComponents(): boolean
@@ -398,99 +490,24 @@ sub _sortComponents
 # the list is empty, returns all components flagged as 'active'
 #
 
-sub _getComponents {
-    my ($self,$list)=@_;
+sub _getComponents
+{
+    my ($self)=@_;
 
-    my @compnames=@{$self->{'NAMES'}};
+    my %comps = map(($_ => 1), @{$self->{'NAMES'}});
 
-    my $cfg = $self->{CCM_CONFIG};
+    %comps = $self->get_component_list() if !%comps;
 
-    unless (scalar (@compnames)) {
-        my $res=$cfg->getElement('/software/components');
-        unless (defined $res) {
-            $ec->ignore_error();
-            $self->error("no components found in profile");
-            return undef;
-        }
-        my %els=$res->getHash();
-        foreach my $cname (keys %els) {
-            my $prop=$cfg->getElement("/software/components/$cname/active");
-            my $module = $cname;
-            if (defined $prop) {
-                if ($prop->getBooleanValue() eq 'true') {
-                    if ($cfg->elementExists("/software/components/$cname/ncm-module")) {
-                        $module = $cfg->getValue("/software/components/$cname/ncm-module");
-                        if ($module !~ m{^([a-z_]\w*(?:::)?)+}) {
-                            $self->error("Invalid module $module for component $cname");
-                            return undef;
-                        }
-                        $module = $1;
-                    }
-                    push(@compnames,$module);
-                }
-            } else {
-                $ec->ignore_error();
-                $self->warn("component $cname",
-                            " 'active' flag not found in node profile under /software/components/".$cname."/, skipping");
-            }
-        }
-        $self->verbose('active components found in profile: ');
-        $self->verbose('  '.join(',',@compnames));
-    }
-
-    unless (scalar @compnames) {
+    if (!%comps) {
         $self->error('no active components found in profile');
         return undef;
     }
 
-    my @skiplist;
-    if (defined $self->{'SKIP'}) {
-        chomp($self->{'SKIP'});
-        @skiplist = split(/,/,$self->{'SKIP'});
-        foreach my $skipcomp (@skiplist) {
-            chomp ($skipcomp);
-            if (grep ($_ eq $skipcomp, @compnames)) {
-                $self->info('skip option set - skipping component: '.$skipcomp);
-                @compnames = grep ($_ ne $skipcomp, @compnames);
-            } else {
-                $self->info('skip option set - but component to be skipped '.
-                                'not found in active list: '
-                                    .$skipcomp);
-            }
-        }
-    }
+    $self->skip_components(\%comps) if $self->{SKIP};
 
-    my @comp_proxylist=();
-    my $cname;
-    foreach $cname (@compnames) {
-        my $comp_proxy=NCD::ComponentProxy->new($cname,$self->{'CCM_CONFIG'});
-        unless (defined $comp_proxy) {
-            $ec->ignore_error();
-            unless ($this_app->option('allowbrokencomps') eq 'yes') {
-                $self->error('cannot instantiate component: '.$cname);
-                return undef;
-            } else {
-                $self->warn('ignoring broken component: '.$cname);
-            }
-        } else {
-            push(@comp_proxylist,$comp_proxy);
-            my @pre=@{$comp_proxy->getPreDependencies()};
-            my @post=@{$comp_proxy->getPostDependencies()};
-            my $pp;
-            foreach $pp (@pre,@post) {
-                unless (grep {$pp eq $_} @compnames) {
-                    if ($this_app->option('autodeps')) {
-                        if (@skiplist && grep{$pp eq $_} @skiplist) {
-                            $self->warn('skipping requested component: '.$cname);
-                        } else {
-                            push(@compnames,$pp);
-                            $self->info("adding missing pre/post requisite component: ".$pp);
-                        }
-                    }
-                }
-            }
-        }
-    }
+
+    my @comp_proxylist= $self->get_proxies(\%comps);
+
     $self->{'CLIST'} = \@comp_proxylist;
     return SUCCESS;
 }
@@ -510,8 +527,8 @@ sub _initialize {
     my ($self,$config,$skip,@names)=@_;
     $self->{'CCM_CONFIG'}=$config;
     $self->{'SKIP'}=$skip;
+    chomp($self->{SKIP});
     $self->{'NAMES'}=\@names;
-
 
     return $self->_getComponents();
 }

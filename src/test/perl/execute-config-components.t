@@ -8,6 +8,7 @@ use NCD::ComponentProxy;
 use CAF::Application;
 use Test::MockModule;
 use CAF::Object;
+use Carp qw(cluck);
 
 $CAF::Object::NoAction = 1;
 
@@ -33,6 +34,8 @@ sub long_failed_configure
 sub execute_dependency_failed
 {
     my ($self) = shift;
+
+    cluck $self->{NAME};
 
     is($self->{NAME}, "acomponent",
        "Components with failed dependencies are not called: $self->{NAME}");
@@ -77,7 +80,7 @@ my $err = $cl->executeConfigComponents();
 is($err->{ERRORS}, 0, "No errors reported");
 is($err->{WARNINGS}, 5, "No warnings reported");
 is(scalar(keys(%{$err->{WARN_COMPS}})), 1,
-   "Component with warnings are reported");
+   "Components with warnings are reported");
 
 
 =pod

@@ -40,7 +40,7 @@ $cl = NCD::ComponentProxyList->new($cfg, undef, qw(acomponent adep));
 is(scalar(@{$cl->{CLIST}}), 2, "A component and its dependency were loaded");
 
 $cl = NCD::ComponentProxyList->new($cfg, undef, qw(adep));
-is(scalar(@{$cl->{CLIST}}), 1,
+is(scalar(@{$cl->{CLIST}}), 0,
    "Dependencies are not loaded with autodeps == 0");
 
 $this_app->{CONFIG}->set('autodeps', 1);
