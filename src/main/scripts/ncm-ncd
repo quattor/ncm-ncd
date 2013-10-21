@@ -95,13 +95,13 @@ sub app_options() {
 	 HELP    => 'skip one component (only to be used with --all)',
 	 DEFAULT => undef },
 
-       { NAME    => 'autodeps=s',
+       { NAME    => 'autodeps',
 	 HELP    => 'expand missing pre/post dependencies in configure',
-	 DEFAULT => 'yes' },
+	 DEFAULT => 1 },
 
-       { NAME    => 'allowbrokencomps=s',
+       { NAME    => 'allowbrokencomps',
 	 HELP    => 'Do not stop overall execution if broken components are found',
-	 DEFAULT => 'yes' },
+	 DEFAULT => 1 },
 
        { NAME    => 'list',
 	 HELP    => 'list existing components and exit',

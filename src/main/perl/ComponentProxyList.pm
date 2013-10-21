@@ -479,7 +479,7 @@ sub _getComponents {
             my $pp;
             foreach $pp (@pre,@post) {
                 unless (grep {$pp eq $_} @compnames) {
-                    if ($this_app->option('autodeps') eq 'yes') {
+                    if ($this_app->option('autodeps')) {
                         if (@skiplist && grep{$pp eq $_} @skiplist) {
                             $self->warn('skipping requested component: '.$cname);
                         } else {
