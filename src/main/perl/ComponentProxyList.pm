@@ -392,8 +392,6 @@ sub _sortComponents
 }
 
 
-
-
 #
 # _getComponents(): boolean
 # instantiates the list of components specified in new(). If
@@ -422,6 +420,11 @@ sub _getComponents {
                 if ($prop->getBooleanValue() eq 'true') {
                     if ($cfg->elementExists("/software/components/$cname/ncm-module")) {
                         $module = $cfg->getValue("/software/components/$cname/ncm-module");
+                        if ($module !~ m{^([a-z_]\w*(?:::)?)+}) {
+                            $self->error("Invalid module $module for component $cname");
+                            return undef;
+                        }
+                        $module = $1;
                     }
                     push(@compnames,$module);
                 }
