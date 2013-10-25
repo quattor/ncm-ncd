@@ -220,6 +220,9 @@ sub executeConfigComponents {
         $self->run_all_components($sortedList, $this_app->option("nodeps"),
                                   $global_status);
     } else {
+        foreach my $cmp (@$sortedList) {
+            $self->set_state($cmp->name(), "Disallowed by policy");
+        }
         $global_status->{ERRORS}++;
     }
 
