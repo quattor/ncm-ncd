@@ -85,11 +85,12 @@ sub reportComponents {
 # Run the pre-config $hook, possibly timing out after $timeout seconds
 sub pre_config_actions
 {
-    my ($self, $hook, $timeout) = @_;
+    my ($self, $hook, $timeout, $comps) = @_;
 
     return 1 if !$hook;
 
     my %opts = (log => $self);
+    $opts{stdin} = encode_json($comps) if $comps;
     $opts{timeout} = $timeout if $timeout;
 
     my $proc = CAF::Process->new([$hook], %opts);
@@ -208,18 +209,18 @@ sub executeConfigComponents {
         'WARNINGS'=>0
     };
 
-    if (!$self->pre_config_actions($pre_hook, $pre_timeout)) {
-        $global_status->{ERRORS}++;
-        return $global_status;
-    }
-
     my $sortedList=$self->_sortComponents($self->{'CLIST'});
+
+    my $pre_input = { 'components' => [map({name => $_->name()}, @$sortedList)] };
+
     if (!defined($sortedList)) {
         $self->error("cannot sort components according to dependencies");
         $global_status->{'ERRORS'}++;
-    } else {
+    } elsif ($self->pre_config_actions($pre_hook, $pre_timeout, $pre_input)) {
         $self->run_all_components($sortedList, $this_app->option("nodeps"),
                                   $global_status);
+    } else {
+        $global_status->{ERRORS}++;
     }
 
     if (!$self->post_config_actions($post_hook, $post_timeout, $global_status)) {

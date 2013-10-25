@@ -158,7 +158,7 @@ $mockcomponent->mock("executeConfigure", sub {
                      });
 
 $err = $cl->executeConfigComponents();
-is($err->{ERRORS}, 1, "If pre_config hook fails no components are executed");
+is($err->{ERRORS}, 2, "If pre_config hook fails no components are executed");
 
 
 done_testing();

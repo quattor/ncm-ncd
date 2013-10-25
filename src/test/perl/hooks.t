@@ -36,7 +36,7 @@ my $cfg = get_config_for_profile('trivial');
 
 my $cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent");
 
-is($cl->pre_config_actions(), 1,
+is($cl->pre_config_actions(undef, undef, {}), 1,
    "PRE executor succeeds when nothing is specified");
 is($cl->post_config_actions(undef, undef, {}), 1,
    "POST executor succeeds when nothing is specified");
@@ -100,7 +100,8 @@ Errors in executions are reported and propagated to the callers
 set_command_status($PRE_HOOK, 1);
 set_command_status($POST_HOOK, 1);
 
-is($cl->pre_config_actions($PRE_HOOK), 0, "Failure in PRE hook is reported");
+is($cl->pre_config_actions($PRE_HOOK, undef, {}), 0,
+   "Failure in PRE hook is reported");
 is($cl->post_config_actions($POST_HOOK, undef, {}), 0,
    "Failure in POST hook is reported");
 
