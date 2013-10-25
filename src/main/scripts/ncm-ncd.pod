@@ -124,13 +124,20 @@ Does nothing but list all found components, in the following format:
 
 name - active? - installed?
 
-=item --pre-hook, --post-hook
+=item --pre-hook
 
-Hooks to be executed before any component is run or after all
-components have been executed.
+Hook to be executed before any component is run.  It receives a JSON
+object with the list of components that will be executed.
 
-The C<post-hook> will receive a JSON object via stdin with the
-components that succeeded, failed or had warnings.
+To see the exact form of the input run
+
+    ncm-ncd --configure <some-comp> --pre-hook /bin/cat
+
+=item --post-hook
+
+Hook to be executed after all components have run.  It receives a JSON
+object via stdin with the components that succeeded, failed or had
+warnings.
 
 =item --pre-hook-timeout, --post-hook-timeout
 
