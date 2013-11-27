@@ -150,8 +150,8 @@ sub run_all_components
             }
         }
         if (@broken_dep) {
-            my $err = sprintf('Cannot run component: %s as pre-dependencies failed: %s',
-                              $name, join(",", @broken_dep));
+            my $err = "Cannot run component: $name as pre-dependencies failed: " .
+                    join(",", @broken_dep);
             $self->error($err);
             $status->{'ERRORS'}++;
             $status->{ERR_COMPS}->{$name} = 1;
