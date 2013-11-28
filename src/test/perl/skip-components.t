@@ -42,7 +42,6 @@ $cl->{SKIP} = "acomponent,anotherone";
 
 $cl->skip_components(\%comps);
 
-diag(explain(\%comps));
 is(scalar(keys(%comps)), 1, "All components are skipped");
 
 done_testing();
