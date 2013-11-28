@@ -428,7 +428,7 @@ sub skip_components
     my ($self, $comps) = @_;
 
     my @skp = split(/,/, $self->{SKIP});
-    my %to_skip = map($_ => 1, @skp);
+    my %to_skip = map(($_ => 1), @skp);
 
     $self->info("Skipping: ", join(",", @skp));
 
