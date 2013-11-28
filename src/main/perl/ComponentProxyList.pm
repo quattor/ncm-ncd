@@ -527,7 +527,7 @@ sub _initialize {
     my ($self,$config,$skip,@names)=@_;
     $self->{'CCM_CONFIG'}=$config;
     $self->{'SKIP'}=$skip;
-    chomp($self->{SKIP});
+    chomp($self->{SKIP}) if $skip;
     $self->{'NAMES'}=\@names;
 
     return $self->_getComponents();
