@@ -71,6 +71,22 @@ isa_ok($cmp, "NCD::ComponentProxy", "Component bar is loaded");
 eval {$c = $cmp->_load() };
 ok(!$@, "No exceptions raised when loading foo");
 isa_ok($c, "NCM::Component::foo", "Component path bar will actually run foo");
+is($c->prefix(), "/software/components/bar",
+   "Prefix is preserved when ncm-module is specified");
+
+=pod
+
+=item * The ncm-module field is namespaced
+
+=cut
+
+$cmp = NCD::ComponentProxy->new("baz", $cfg);
+isa_ok($cmp, "NCD::ComponentProxy", "Component baz is loaded");
+eval {$c = $cmp->_load()};
+warn $@;
+ok(!$@, "No exceptions raised when loading spma::ips");
+is($c->prefix(), "/software/components/baz",
+   "Prefix is preserved with namespaced ncm-module's");
 
 =pod
 
