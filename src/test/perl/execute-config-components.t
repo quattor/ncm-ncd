@@ -35,8 +35,6 @@ sub execute_dependency_failed
 {
     my ($self) = shift;
 
-    cluck $self->{NAME};
-
     is($self->{NAME}, "acomponent",
        "Components with failed dependencies are not called: $self->{NAME}");
     return {ERRORS => 1, WARNINGS => 0};
