@@ -83,7 +83,6 @@ is($c->prefix(), "/software/components/bar",
 $cmp = NCD::ComponentProxy->new("baz", $cfg);
 isa_ok($cmp, "NCD::ComponentProxy", "Component baz is loaded");
 eval {$c = $cmp->_load()};
-warn $@;
 ok(!$@, "No exceptions raised when loading spma::ips");
 is($c->prefix(), "/software/components/baz",
    "Prefix is preserved with namespaced ncm-module's");
