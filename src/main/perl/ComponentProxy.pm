@@ -336,7 +336,7 @@ sub _initialize {
             $config->getElement("$_COMP_PREFIX/$name/ncm-module")->getValue() :
             $self->{NAME};
 
-    if ($self->{MODULE} !~ m{^([a-zA-Z_]\w*(?:::[a-zA-Z_]\w*)*)}) {
+    if ($self->{MODULE} !~ m{^([a-zA-Z_]\w*(?:::[a-zA-Z_]\w*)*)$}) {
         throw_error ("Bad module name: $self->{MODULE}");
         return undef;
     }
