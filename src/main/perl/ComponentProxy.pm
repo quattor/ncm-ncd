@@ -178,7 +178,7 @@ sub hasFile {
     my $self=shift;
 
     my $mod = $self->module();
-    $mod =~ s{::}{-}g;
+    $mod =~ s{::}{/}g;
 
     return -r "/usr/lib/perl/NCM/Component/$mod.pm" ? 1:0 ;
 }
