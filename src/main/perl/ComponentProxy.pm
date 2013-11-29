@@ -25,7 +25,7 @@ my $_COMP_PREFIX='/software/components';
 
 my $ec=LC::Exception::Context->new->will_store_all;
 
-
+use constant COMPONENT_BASE => "/usr/lib/perl/NCM/Component/";
 
 =pod
 
@@ -172,15 +172,20 @@ sub getPostDependencies {
 
 returns 1 if the components perl module is installed, 0 otherwise.
 
+Receives an optional parameter with the base directory where the Perl
+module should be looked for.
+
 =cut
 
 sub hasFile {
-    my $self=shift;
+    my ($self, $base) = @_;
+
+    $base ||= COMPONENT_BASE;
 
     my $mod = $self->module();
     $mod =~ s{::}{/}g;
 
-    return -r "/usr/lib/perl/NCM/Component/$mod.pm" ? 1:0 ;
+    return -r "$base$mod.pm" ? 1:0 ;
 }
 
 =pod
