@@ -189,6 +189,7 @@ sub hasFile {
 }
 
 =pod
+
 =item writeComponent(): boolean
 
 returns 1 if the component has the code defined in the configuration
@@ -390,6 +391,7 @@ sub _load {
     my $comp_EC;
     eval "\$comp_EC=\$NCM::Component::$mod\:\:EC;";
     if ($@ || !defined $comp_EC || ref($comp_EC) ne 'LC::Exception::Context') {
+        $mod =~ s{::}{/}g;
         $self->error('bad component exception handler: $EC is not defined, ',
                      'not accessible or not of type LC::Exception::Context');
         $self->error("(note 1: the component package name has to be exactly ",
