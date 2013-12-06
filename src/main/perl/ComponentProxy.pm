@@ -480,6 +480,7 @@ sub _execute {
 
     my $retval;
     my $name=$self->name();
+    my $mod = $self->module();
 
     local $SIG{'USR1'} = sub {
         $self->info("Executing component $name");
@@ -511,12 +512,13 @@ sub _execute {
         $LC::Check::NoAction=1;
         my $compname=$self->{'NAME'};
         my $noact_supported=undef;
-        eval "\$noact_supported=\$NCM::Component::$compname\:\:NoActionSupported;";
+        eval "\$noact_supported=\$NCM::Component::$mod\:\:NoActionSupported;";
         if ($@ || !defined $noact_supported || !$noact_supported) {
             # noaction is not supported by the component, skip
             # execution in fake mod
-            $self->info("component $compname has NoActionSupported not defined or ",
-                        "false, skipping noaction run");
+            $self->info("component $compname (implemented by $mod) has ",
+                        "NoActionSupported not defined or false, skipping ",
+                        "noaction run");
             $retval= {
                 'WARNINGS'=>0,
                 'ERRORS'=>0
@@ -544,7 +546,7 @@ sub _execute {
         $retval=undef;
     } else {
         my $comp_EC;
-        eval "\$comp_EC=\$NCM::Component::$name\:\:EC;";
+        eval "\$comp_EC=\$NCM::Component::$mod\:\:EC;";
         unless ($@) {
             if ($comp_EC->error) {
                 $self->error('uncaught error exception in component:');
