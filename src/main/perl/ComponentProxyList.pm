@@ -478,7 +478,8 @@ sub get_proxies
 
         if ($ok) {
             push(@pxs, $px);
-            push(@c, @deps);
+            push(@c, grep(!exists($comps->{$_}), @deps));
+            $comps->{$_} = 1 foreach @deps;
         }
     }
     return @pxs;
