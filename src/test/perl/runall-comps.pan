@@ -2,13 +2,12 @@
 use strict;
 use warnings;
 use Test::More;
-use Test::Quattor qw(execute-config-components execute-config-deps);
+use Test::Quattor qw(runall-comps);
 use NCD::ComponentProxyList;
 use NCD::ComponentProxy;
 use CAF::Application;
 use Test::MockModule;
 use CAF::Object;
-use Carp qw(cluck);
 
 $CAF::Object::NoAction = 1;
 
@@ -35,6 +34,8 @@ sub execute_dependency_failed
 {
     my ($self) = shift;
 
+    cluck $self->{NAME};
+
     is($self->{NAME}, "acomponent",
        "Components with failed dependencies are not called: $self->{NAME}");
     return {ERRORS => 1, WARNINGS => 0};
@@ -48,8 +49,7 @@ $mocklist->mock("post_config_actions", 1);
 
 =head1 DESCRIPTION
 
-Tests for the C<NCD::ComponentProxyList::executeConfigComponents>
-method.
+Tests for the C<NCD::ComponentProxyList::run_all_components> method.
 
 =head1 TESTS
 
@@ -66,34 +66,53 @@ our $this_app = CAF::Application->new('app');
 $this_app->{CONFIG}->define("nodeps");
 $this_app->{CONFIG}->set('nodeps', 0);
 
-my $cfg = get_config_for_profile('execute-config-components');
+my $err = {};
+my $cfg = get_config_for_profile('runall-comps');
+
+my @cmp = (NCD::ComponentProxy->new('acomp', $cfg),
+           NCD::ComponentProxy->new('adep', $cfg));
 
 
 my $cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent");
 
-#$cl->{CLIST} = [NCD::ComponentProxy->new('acomponent', $cfg)];
+$cl->{CLIST} = [$cmp[0]];
 
-my $err = $cl->executeConfigComponents();
+$cl->run_all_components($cl->{CLIST}, 0, $err);
 
 is($err->{ERRORS}, 0, "No errors reported");
 is($err->{WARNINGS}, 5, "No warnings reported");
 is(scalar(keys(%{$err->{WARN_COMPS}})), 1,
    "Components with warnings are reported");
 
-
 =pod
 
 =item * Many components
 
+=over
+
+=item * C<$nodeps == 0>
+
 =cut
 
-$cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent", "anotherone");
+$cl->{CLIST} = \@cmp;
 
-$err = $cl->executeConfigComponents();
+$cl->run_all_components($cl->{CLIST}, 0, $err);
 is($err->{ERRORS}, 0, "No errors detected");
 is($err->{WARNINGS}, 15, "Warnings are summed up");
 is(scalar(keys(%{$err->{WARN_COMPS}})), 2,
    "Components with warnings are reported");
+
+=pod
+
+=item * C<$nodeps>
+
+=back
+
+=cut
+
+$cl->run_all_components($cl->{CLIST}, 1, $err);
+is($err->{ERRORS}, 0, "No errors when nodeps and all dependencies satisfied");
+is($err->{WARNINGS}, 15, "Warnings correctly aggregated with nodeps");
 
 =pod
 
@@ -159,7 +178,7 @@ $mockcomponent->mock("executeConfigure", sub {
                      });
 
 $err = $cl->executeConfigComponents();
-is($err->{ERRORS}, 2, "If pre_config hook fails no components are executed");
+is($err->{ERRORS}, 1, "If pre_config hook fails no components are executed");
 
 
 done_testing();

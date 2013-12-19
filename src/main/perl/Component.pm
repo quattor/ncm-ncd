@@ -213,11 +213,9 @@ Returns the standard configuration path for the component.
 =cut
 
 sub prefix {
-  my ($proto) = @_;
-  my $class = ref $proto ? ref $proto : $proto;
-  my @nsclass = split(/::/, $class);
-  my $short = pop(@nsclass);
-  return "/software/components/$short";
+  my ($self) = @_;
+
+  return "/software/components/$self->{NAME}";
 }
 
 
