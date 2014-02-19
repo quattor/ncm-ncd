@@ -296,6 +296,36 @@ sub get_errors {
 
 =pod
 
+=item add_files()
+
+Stores files that have been manipulated by this component
+
+=cut
+
+sub add_files
+{
+    my ($self, @files) = @_;
+
+    push(@{$self->{FILES}}, @files);
+}
+
+=pod
+
+=item get_files(): ref to list of strings
+
+Returns a reference to the list of files manipulated by the component
+
+=cut
+
+sub get_files
+{
+    my $self = shift;
+
+    return $self->{FILES};
+}
+
+=pod
+
 =head1 Pure virtual methods
 
 =item Configure($config): boolean
