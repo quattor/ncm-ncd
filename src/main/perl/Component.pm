@@ -381,6 +381,7 @@ sub _initialize {
   $self->{'NAME'}=$name;
   $self->{'ERRORS'}=0;
   $self->{'WARNINGS'}=0;
+  $self->{FILES} = [];
   $self->{LOGGER} = defined $logger ? $logger:$this_app;
   return SUCCESS;
 }
