@@ -231,6 +231,8 @@ sub executeConfigComponents {
 sub get_statefile {
     my ($self, $comp) = @_;
     if ($this_app->option('state')) {
+        # the state directory could be volative
+        mkdir($this_app->option('state')) unless -d $this_app->option('state');
         my $file = $this_app->option('state') . '/' . $comp;
         if ($file =~ m{^(\/[^\|<>&]*)$}) {
             # Must be an absolute path, no shell metacharacters
