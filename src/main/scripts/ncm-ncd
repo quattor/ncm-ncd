@@ -185,6 +185,8 @@ sub getCCMConfig {
 
 sub lock {
   my $self=shift;
+  # /var/lock can be volatile
+  mkdir('/var/lock/quattor');
   $self->{LOCK}=CAF::Lock->new('/var/lock/quattor/ncm-ncd');
   my $lock_flag=FORCE_IF_STALE;
   $lock_flag=FORCE_ALWAYS if ($self->option("forcelock"));
