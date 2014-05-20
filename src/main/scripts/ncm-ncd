@@ -130,6 +130,9 @@ sub app_options() {
        { NAME => "post-hook-timeout=i",
          HELP => "Time out for hte post hook, in seconds",
          DEFAULT => 300 },
+       { NAME => "chroot=s",
+	 HELP => "Chroot to the the directory given as an argument",
+	 DEFAULT => undef },
       );
 
     return \@array;
@@ -474,6 +477,12 @@ unless (defined $compList) {
 
 @args = ($this_app->option("pre-hook"), $this_app->option("pre-hook-timeout"),
          $this_app->option("post-hook"), $this_app->option("post-hook-timeout"));
+
+if ($this_app->option("chroot")) {
+    chroot($this_app->option("chroot")) or die "Unable to chroot to ",
+	    $this_app->option("chroot");
+}
+
 chdir ('/tmp');
 my $ret=$compList->$method(@args);
 my $fun='OK';
