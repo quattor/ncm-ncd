@@ -458,13 +458,13 @@ sub missing_deps
         if (!exists($comps->{$pp})) {
             if (!$autodeps) {
                 $ec->ignore_error();
-                $self->error("Unable to satisfy dependency $pp");
-                return undef;
+                $self->warn("Not satifying dependency $pp");
+                return;
             }
             push(@deps, $pp);
         }
     }
-    return (1, @deps);
+    return (@deps);
 }
 
 sub get_proxies
@@ -480,13 +480,11 @@ sub get_proxies
             $self->info("Skipping component $comp");
             next;
         }
-        my ($ok, @deps) = $self->missing_deps($px, $comps);
+        my (@deps) = $self->missing_deps($px, $comps);
 
-        if ($ok) {
-            push(@pxs, $px);
-            push(@c, grep(!exists($comps->{$_}), @deps));
-            $comps->{$_} = 1 foreach @deps;
-        }
+	push(@pxs, $px);
+	push(@c, grep(!exists($comps->{$_}), @deps));
+	$comps->{$_} = 1 foreach @deps;
     }
     return @pxs;
 }
@@ -511,7 +509,6 @@ sub _getComponents
     }
 
     $self->skip_components(\%comps) if $self->{SKIP};
-
 
     my @comp_proxylist= $self->get_proxies(\%comps);
 
