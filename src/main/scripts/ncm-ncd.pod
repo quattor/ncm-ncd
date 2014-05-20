@@ -145,6 +145,11 @@ Timeouts, in seconds, for the C<--pre-hook> and C<--post-hook>
 
 A value of 0 means no time out.  By default they time out after 5 minutes.
 
+=item --chroot
+
+Chroot to the directory given as an argument.  If it's not possible to
+chroot, C<ncm-ncd> will die.
+
 =back
 
 =head2 Other Options
