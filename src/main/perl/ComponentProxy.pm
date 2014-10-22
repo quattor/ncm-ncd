@@ -9,7 +9,7 @@ package NCD::ComponentProxy;
 use strict;
 use LC::Exception qw (SUCCESS throw_error);
 
-use parent qw(CAF::Object CAF::ReporterMany);
+use parent qw(CAF::ReporterMany CAF::Object);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Path;
 use CAF::Log;

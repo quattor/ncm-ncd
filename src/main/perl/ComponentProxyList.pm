@@ -7,7 +7,7 @@ package NCD::ComponentProxyList;
 
 use strict;
 use LC::Exception qw (SUCCESS throw_error);
-use parent qw(CAF::Object CAF::ReporterMany);
+use parent qw(CAF::ReporterMany CAF::Object);
 use NCD::ComponentProxy;
 use JSON::XS;
 use CAF::Process;
