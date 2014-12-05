@@ -162,114 +162,6 @@ sub hasFile {
     return -r "$base$mod.pm" ? 1:0 ;
 }
 
-=pod
-
-=item writeComponent(): boolean
-
-returns 1 if the component has the code defined in the configuration
-and has been written to disk, 0 otherwise.  This will erase old
-component definitions if the code is no longer defined in the
-XML configuration.
-
-=cut
-
-sub writeComponent {
-
-    my $self=shift;
-
-    # Pull out the component name and the configuration.
-    my $cname = $self->{'NAME'};
-    my $config = $self->{'CONFIG'};
-
-    # Ensure that both the name and configuration are defined.
-    unless (defined($cname)) {
-        $self->error("internal error: component name not defined");
-    }
-    unless (defined($config)) {
-        $self->error("internal error: component configuration not defined");
-    }
-
-    # Base name for component configuration.
-    my $base = '/software/components/'.$cname;
-
-    # Determine if the script exists.  If not, then ensure that any
-    # files created by previous runs are removed.  This is to avoid
-    # interference between old scripts and newer ones installed via
-    # a package.  This is needed because there is no hook for
-    # cleaning up a script if no 'Unconfigure' method is defined.
-    unless ($config->elementExists($base.'/code/script')) {
-
-        # If the script exists, remove it.
-        my $fname = "/var/ncm/lib/perl/NCM/Component/$cname.pm";
-        if (-e $fname) {
-            unlink $fname;
-            $self->error("error unlinking $fname") if ($?);
-        }
-
-        # Remove data directory for this template.
-        my $dname = "/var/ncm/config/$cname";
-        rmtree($dname,0,1) if (-e $dname);
-
-        return 0;
-    }
-
-    # Ensure that the directory for the components exists.
-    my $sdir = '/var/ncm/lib/perl/NCM/Component';
-    unless (-d $sdir) {
-        mkpath($sdir, 0, 0755);
-        unless (-d $sdir) {
-            $self->error("cannot create directory: $sdir");
-            return 0;
-        }
-    }
-
-    # Ensure that the directory for the component data exists.
-    my $ddir = '/var/ncm/config/'.$cname;
-    unless (-d $ddir) {
-        mkpath($ddir, 0, 0755);
-        unless (-d $ddir) {
-            $self->error("cannot create directory: $ddir");
-            return 0;
-        }
-    }
-
-    # Now write the script to the file.
-    my $script = $config->getValue($base.'/code/script');
-    my $fname = "$sdir/$cname.pm";
-    open SCRIPT, '>', "$fname";
-    print SCRIPT $script;
-    close SCRIPT;
-
-    # Check if there was an error while writing the script.
-    if ($?) {
-        $self->error("error writing script $fname: $!");
-        return 0;
-    }
-
-    # Write out data files if specified.
-    if ($config->elementExists($base.'/code/data')) {
-        my $dhash = $config->getElement($base.'/code/data');
-        while ($dhash->hasNextElement()) {
-            my $entry = $dhash->getNextElement();
-            my $fname = $entry->getName();
-            my $contents = $config->getValue($base.'/code/data/'.$fname);
-            # Now write the script to the file.
-            open DATA, '>', "$ddir/$fname";
-            print DATA $contents;
-            close DATA;
-
-            # Check if there was an error while writing the script.
-            if ($?) {
-                $self->error("error writing data file $ddir/$fname: $!");
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
-
-=pod
-
 =back
 
 =head2 Private methods
@@ -353,12 +245,10 @@ sub _load {
 
     # try to create the component from configuration information
     # or check that it is pre-installed
-    if (!$self->writeComponent()) {
-        if (!$self->hasFile()) {
-                $self->error("component $mod is not installed in /var/ncm/lib/perl/NCM/Component or /usr/lib/perl/NCM/Component");
-                return undef;
-            }
-        }
+    if (!$self->hasFile()) {
+        $self->error("component $mod is not installed in /var/ncm/lib/perl/NCM/Component or /usr/lib/perl/NCM/Component");
+        return undef;
+    }
 
     eval ("use NCM::Component::$mod;");
     if ($@) {
