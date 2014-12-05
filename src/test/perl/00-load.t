@@ -6,7 +6,7 @@ use File::Find;
 use Test::Quattor;
 
 
-my @mods = qw(NCM::Check NCM::HLConfig NCM::Component NCD::ComponentProxy NCD::ComponentProxyList);
+my @mods = qw(NCM::Check NCM::Component NCD::ComponentProxy NCD::ComponentProxyList);
 
 plan tests => scalar(@mods);
 
