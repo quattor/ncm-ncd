@@ -48,6 +48,12 @@ $cl = NCD::ComponentProxyList->new($cfg, undef, qw(adep));
 is(scalar(@{$cl->{CLIST}}), 2,
    "Dependencies are loaded even if not directly requested");
 
+$cl = NCD::ComponentProxyList->new($cfg, undef, qw(aninactive));
+is(scalar(@{$cl->{CLIST}}), 2, "An inactive component was loaded");
+
+$cl = NCD::ComponentProxyList->new($cfg, undef, qw(doesnotexist));
+is($cl, undef, "Failure on non-existing component");
+
 my %comps = $cl->get_all_components();
 is_deeply(\%comps,{
     acomponent => 1,

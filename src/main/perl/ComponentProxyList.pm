@@ -447,7 +447,7 @@ sub _set_skip
 
 # given hash reference to all components C<comps>, C<skip_components>
 # filters out all componets that are in the SKIP list.
-# Returns a hash with keys all components in teh SKIP list and values
+# Returns a hash with keys all components in the SKIP list and values
 # whether or not they were skipped (not skipped if not present in C<$comps>).
 sub skip_components
 {
@@ -528,14 +528,34 @@ sub _getComponents
 {
     my ($self) = @_;
 
-    my %comps = map(($_ => 1), @{$self->{'NAMES'}});
+    my %comps;
+    if ($self->{'NAMES'}) {
+        my %all_comps = $self->get_all_components();
+        foreach my $name (@{$self->{NAMES}}) {
+            if (exists($all_comps{$name})) {
+                $comps{$name} = 1;
+                $self->verbose("Selected inactive component $name") if (! $all_comps{$name});
+            } else {
+                # invalid component name
+                $self->error('Non-existing component $name specified.');
+                return;
+            }
+        }
 
-    %comps = $self->get_component_list() if !%comps;
-
-    if (!%comps) {
-        $self->error('no active components found in profile');
-        return undef;
-    }
+        if (!%comps) {
+            # can we get here? 
+            $self->error('No (in)active components found in profile for names ', 
+                         join(',', @{$self->{NAMES}}));
+            return;
+        }
+    } else {
+        # all active components
+        %comps = $self->get_component_list();
+        if (!%comps) {
+            $self->error('No active components found in profile');
+            return;
+        }
+    };
 
     $self->skip_components(\%comps) if $self->{SKIP};
 
@@ -563,6 +583,7 @@ object initialization (done via new)
 sub _initialize
 {
     my ($self, $config, $skip, @names) = @_;
+
     $self->{CCM_CONFIG} = $config;
     $self->{SKIP}       = _set_skip($skip);
     $self->{NAMES}      = \@names;
