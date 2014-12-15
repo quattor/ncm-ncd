@@ -107,7 +107,7 @@ sub app_options()
         },
 
         {
-            NAME => 'useprofile:s',
+            NAME    => 'useprofile:s',
             HELP    => 'profile to use as configuration profile (optional, otherwise latest)',
             DEFAULT => undef
         },
@@ -493,7 +493,7 @@ foreach (sort(@ARGV)) {
 }
 
 unless ($this_app->option('all') || scalar(@component_names)) {
-    $this_app->error("please provide component names as parameters, or use --all");
+    $this_app->error("Please provide component names as parameters, or use --all");
     $this_app->finish(-1);
 }
 
@@ -505,7 +505,7 @@ if (defined $skip && !$this_app->option('all')) {
 }
 
 unless (scalar(@component_names)) {
-    $this_app->info('no components specified, getting all active ones..');
+    $this_app->info('No components specified, getting all active ones.');
 }
 
 my $compList = NCD::ComponentProxyList->new($this_app->getCCMConfig(), $skip, @component_names);
@@ -514,7 +514,7 @@ my @args;
 
 unless (defined $compList) {
     $ec->ignore_error();
-    $this_app->error("cannot get component(s)");
+    $this_app->error("No components to dispatch.");
     $this_app->finish(-1);
 }
 
@@ -560,24 +560,18 @@ foreach my $warn_comp (keys %$arrayrefw) {
 chop($warn_comp_string);
 
 if ($ret->{'ERRORS'} > 0) {
-    $this_app->info('Errors while configuring ' . $err_comp_string);
+    $this_app->info("Errors while configuring $err_comp_string");
 }
 
 if ($ret->{'WARNINGS'} > 0) {
-    $this_app->info('Warnings while configuring ' . $warn_comp_string);
+    $this_app->info("Warnings while configuring $warn_comp_string");
 
 }
 
 $this_app->$fun(
-    $ret->{'ERRORS'},
-    ' errors, ' . $ret->{'WARNINGS'},
-    ' warnings ' . 'executing ' . $msg
+    $ret->{'ERRORS'}, ' errors, ',  
+    $ret->{'WARNINGS'}, ' warnings ', 
+    "executing $msg"
 );
 
-#               ' on: '.
-#		(scalar @component_names ?
-#		 join(',', @component_names) : "all components"));
-
 $this_app->finish($exit);
-
-#*#################################################################
