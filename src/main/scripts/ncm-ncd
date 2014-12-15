@@ -512,7 +512,7 @@ my $compList = NCD::ComponentProxyList->new($this_app->getCCMConfig(), $skip, @c
 
 my @args;
 
-unless (defined $compList) {
+unless (defined $compList && defined($compList->{CLIST})) {
     $ec->ignore_error();
     $this_app->error("No components to dispatch.");
     $this_app->finish(-1);
