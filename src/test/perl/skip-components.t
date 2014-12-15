@@ -38,7 +38,7 @@ my $comps = {
     foo        => 1
 };
 
-$cl->{SKIP} = NCD::ComponentProxyList::_set_skip("acomponent,anotherone,doesnotexist");
+$cl->{SKIP} = NCD::ComponentProxyList::_parse_skip_args("acomponent,anotherone,doesnotexist");
 
 my %skipped = $cl->skip_components($comps);
 

@@ -432,7 +432,7 @@ sub get_all_components
 }
 
 # parse the --skip commandline option as comma-separated array of components to skip
-sub _set_skip
+sub _parse_skip_args
 {
     my ($skiptxt) = @_;
     my @skip;
@@ -496,6 +496,7 @@ sub missing_deps
     return (@deps);
 }
 
+# Given hash C<comps>, return list of component proxies
 sub get_proxies
 {
     my ($self, $comps) = @_;
@@ -503,17 +504,26 @@ sub get_proxies
     my @pxs;
 
     my @c = keys(%$comps);
+
     foreach my $comp (@c) {
         my $px = NCD::ComponentProxy->new($comp, $self->{CCM_CONFIG});
         if (!$px) {
-            $self->info("Skipping component $comp");
-            next;
+            $self->error("Failed to create ComponentProxy for component $comp");
+            return;
         }
+
         my (@deps) = $self->missing_deps($px, $comps);
 
         push(@pxs, $px);
         push(@c, grep(!exists($comps->{$_}), @deps));
         $comps->{$_} = 1 foreach @deps;
+    }
+
+    my $msg = " for components " . join(',', keys(%$comps));
+    if (@pxs) {
+        $self->verbose("Created ", scalar @pxs," ComponentProxy instances $msg");
+    } else {
+        $self->error("Failed to create ComponentProxy $msg");
     }
     return @pxs;
 }
@@ -529,7 +539,7 @@ sub _getComponents
     my ($self) = @_;
 
     my %comps;
-    if ($self->{'NAMES'}) {
+    if (@{$self->{'NAMES'}}) {
         my %all_comps = $self->get_all_components();
         foreach my $name (@{$self->{NAMES}}) {
             if (exists($all_comps{$name})) {
@@ -537,7 +547,7 @@ sub _getComponents
                 $self->verbose("Selected inactive component $name") if (! $all_comps{$name});
             } else {
                 # invalid component name
-                $self->error('Non-existing component $name specified.');
+                $self->error("Non-existing component $name specified.");
                 return;
             }
         }
@@ -560,6 +570,8 @@ sub _getComponents
     $self->skip_components(\%comps) if $self->{SKIP};
 
     my @comp_proxylist = $self->get_proxies(\%comps);
+
+    return if (! @comp_proxylist);
 
     $self->{'CLIST'} = \@comp_proxylist;
 
@@ -585,7 +597,7 @@ sub _initialize
     my ($self, $config, $skip, @names) = @_;
 
     $self->{CCM_CONFIG} = $config;
-    $self->{SKIP}       = _set_skip($skip);
+    $self->{SKIP}       = _parse_skip_args($skip);
     $self->{NAMES}      = \@names;
 
     return $self->_getComponents();
