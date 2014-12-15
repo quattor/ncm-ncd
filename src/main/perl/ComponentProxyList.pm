@@ -24,9 +24,6 @@ my $ec = LC::Exception::Context->new->will_store_errors;
 
 NCD::ComponentProxyList - component proxy list class
 
-=head1 SYNOPSIS
-
-
 =head1 INHERITANCE
 
   CAF::Object, CAF::Reporter
@@ -34,8 +31,6 @@ NCD::ComponentProxyList - component proxy list class
 =head1 DESCRIPTION
 
 Instantiation, execution and management of ComponentProxy object instances.
-
-=back
 
 =head2 Public methods
 
@@ -511,7 +506,11 @@ sub _getComponents
 
 =pod
 
+=back
+
 =head2 Private methods
+
+=over
 
 =item _initialize($skip,@comp_names)
 
@@ -529,5 +528,11 @@ sub _initialize
 
     return $self->_getComponents();
 }
+
+=pod
+
+=back
+
+=cut
 
 1;

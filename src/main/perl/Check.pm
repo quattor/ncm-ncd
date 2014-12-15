@@ -1,5 +1,5 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
 
@@ -59,14 +59,6 @@ File mode, owner, access time, hard and soft links, ...
 =back
 
 =head1 METHODS
-
-=cut
-
-#------------------------------------------------------------
-#                      Public Methods/Functions
-#------------------------------------------------------------
-
-=pod
 
 =head2 NCM::Check::lines(file [, option ...])
 
@@ -310,16 +302,4 @@ sub lines ($;%) {
 }
 
 
-=head1 AUTHOR
-
-German Cancio <German.Cancio@cern.ch>; original 'lines' function by
-Lionel Cons <Lionel.Cons@cern.ch>
-
-=head1 VERSION
-
-$Id: Check.pm.cin,v 1.6 2008/06/16 14:12:31 poleggi Exp $
-
-=cut
-
-#+#############################################################################
 1;

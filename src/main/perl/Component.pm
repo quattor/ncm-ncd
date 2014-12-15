@@ -1,5 +1,5 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
 
@@ -42,23 +42,6 @@ NCM::Component - basic support functions for NCM components
 This class provides the neccessary support functions for components,
 which have to inherit from it. Some functions provide aliases, for
 enhanced LCFG backwards compatibility.
-
-=head1 AUTHOR
-
-German Cancio <German.Cancio@cern.ch>
-
-=head1 VERSION
-
-$Id: Component.pm.cin,v 1.11 2008/07/28 16:51:35 munoz Exp $
-
-=cut
-
-
-#------------------------------------------------------------
-#                      Public Methods/Functions
-#------------------------------------------------------------
-
-=pod
 
 =head1 Public methods
 
@@ -219,20 +202,6 @@ sub prefix {
 }
 
 
-#=pod
-#
-#=item noaction(): 0|1
-#
-#Returns if noaction flag is set by the application.
-#
-#=cut
-#
-#sub noaction {
-#  my $self=shift;
-#  return $self->{'NOACTION'};
-#}
-
-
 =pod
 
 =item unescape($string): $string
@@ -326,7 +295,11 @@ sub get_files
 
 =pod
 
+=back
+
 =head1 Pure virtual methods
+
+=over
 
 =item Configure($config): boolean
 
@@ -363,7 +336,11 @@ sub Unconfigure {
 
 =pod
 
+=back
+
 =head1 Private methods
+
+=over
 
 =item _initialize($comp_name)
 
@@ -395,6 +372,10 @@ sub template
     return $template;
 }
 
+=pod
 
-#+#############################################################################
+=back
+
+=cut
+
 1;
