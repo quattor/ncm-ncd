@@ -429,18 +429,45 @@ sub get_all_components
     return %components;
 }
 
+# parse the --skip commandline option as comma-separated array of components to skip
+sub _set_skip
+{
+    my ($skiptxt) = @_;
+    my @skip;
+
+    if ($skiptxt) {
+        chomp($skiptxt);
+        @skip = split(/,/, $skiptxt);
+    }
+
+    return \@skip;
+}
+
+# given hash reference to all components C<comps>, C<skip_components>
+# filters out all componets that are in the SKIP list.
+# Returns a hash with keys all components in teh SKIP list and values
+# whether or not they were skipped (not skipped if not present in C<$comps>).
 sub skip_components
 {
     my ($self, $comps) = @_;
 
-    my @skp = split(/,/, $self->{SKIP});
-    my %to_skip = map(($_ => 1), @skp);
-
-    $self->info("Skipping: ", join(",", @skp));
-
-    foreach my $sk (keys(%to_skip)) {
-        delete($comps->{$sk});
+    my (@skip, @skip_no_comp);
+    foreach my $sk (@{$self->{SKIP}}) {
+        if (exists($comps->{$sk})) {
+            delete($comps->{$sk});
+            push(@skip, $sk);
+        } else {
+            push(@skip_no_comp, $sk);
+        }
     }
+    
+    $self->info("Skipping components: ", join(",", @skip)) if @skip;
+    $self->info("Skipping components (but not defined/active): ", join(",", @skip_no_comp)) if @skip_no_comp;
+
+    my %to_skip;
+    @to_skip{@skip} = (1) x @skip;
+    @to_skip{@skip_no_comp} = (0) x @skip_no_comp;
+
     return %to_skip;
 }
 
@@ -513,6 +540,7 @@ sub _getComponents
     my @comp_proxylist = $self->get_proxies(\%comps);
 
     $self->{'CLIST'} = \@comp_proxylist;
+
     return SUCCESS;
 }
 
@@ -533,10 +561,9 @@ object initialization (done via new)
 sub _initialize
 {
     my ($self, $config, $skip, @names) = @_;
-    $self->{'CCM_CONFIG'} = $config;
-    $self->{'SKIP'}       = $skip;
-    chomp($self->{SKIP}) if $skip;
-    $self->{'NAMES'} = \@names;
+    $self->{CCM_CONFIG} = $config;
+    $self->{SKIP}       = _set_skip($skip);
+    $self->{NAMES}      = \@names;
 
     return $self->_getComponents();
 }

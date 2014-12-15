@@ -10,7 +10,6 @@ use CAF::Object;
 
 $CAF::Object::NoAction = 1;
 
-
 =pod
 
 =head1 DESCRIPTION
@@ -26,22 +25,29 @@ $this_app->{CONFIG}->set('nodeps', 0);
 my $err = {};
 my $cfg = get_config_for_profile('runall-comps');
 
-my @cmp = (NCD::ComponentProxy->new('acomponent', $cfg),
-           NCD::ComponentProxy->new('anotherone', $cfg));
-
+my @cmp =(
+    NCD::ComponentProxy->new('acomponent', $cfg), 
+    NCD::ComponentProxy->new('anotherone', $cfg)
+);
 
 my $cl = NCD::ComponentProxyList->new($cfg, undef, qw(acomponent anotherone));
 
+my $comps = {
+    acomponent => 1,
+    anotherone => 1,
+    foo        => 1
+};
 
-my %comps = (acomponent => 1,
-             anotherone => 1,
-             foo => 1);
+$cl->{SKIP} = NCD::ComponentProxyList::_set_skip("acomponent,anotherone,doesnotexist");
 
-$cl->{SKIP} = "acomponent,anotherone";
+my %skipped = $cl->skip_components($comps);
 
+is_deeply($comps, {foo => 1}, "All components but foo are skipped");
 
-$cl->skip_components(\%comps);
-
-is(scalar(keys(%comps)), 1, "All components are skipped");
+is_deeply(\%skipped, {
+        acomponent => 1,
+        anotherone => 1,
+        doesnotexist => 0,
+}, "Skipped components");
 
 done_testing();
