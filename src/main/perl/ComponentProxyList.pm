@@ -386,9 +386,25 @@ sub get_component_list
 {
     my ($self) = @_;
 
+    my %components = $self->get_all_components();
+    foreach my $k (keys %components) {
+        delete $components{$k} if (!$components{$k});
+    }
+    $self->verbose("Active components in the profile: ", join(", ", keys(%components)));
+    return %components;
+}
+
+#
+# Returns a hash with keys all the Perl modules be executed
+# and values if they are active or not.
+#
+sub get_all_components
+{
+    my ($self) = @_;
+
     my $cfg = $self->{CCM_CONFIG};
 
-    my %modules;
+    my %components;
 
     my $el = $cfg->getElement("/software/components");
     if (!$el) {
@@ -400,21 +416,17 @@ sub get_component_list
     my %cmps = $el->getHash();
 
     foreach my $cname (keys(%cmps)) {
-        my $active = $cfg->getElement("/software/components/$cname/active");
-
-        if (!$active) {
-            $ec->ignore_error();
-            $self->warning("Active flag not found for component $cname. Skipping");
-            next;
+        my $is_active;
+        if ($cmps{$cname}->hasExists('active')) {
+            $is_active = $cmps{$cname}->getElement('active')->getValue() eq 'true';
+        } else {
+            $self->warning("Active flag not found for component $cname.");
         }
 
-        next if $active->getValue() ne 'true';
-
-        $modules{$cname} = 1;
+        $components{$cname} = $is_active;
     }
-
-    $self->verbose("Active components in the profile: ", join(", ", keys(%modules)));
-    return %modules;
+    $self->verbose("Components in the profile: ", join(", ", keys(%components)));
+    return %components;
 }
 
 sub skip_components
