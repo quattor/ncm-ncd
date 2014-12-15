@@ -388,7 +388,7 @@ sub get_component_list
 
     my %components = $self->get_all_components();
     foreach my $k (keys %components) {
-        delete $components{$k} if (! $components{$k});
+        delete $components{$k} if (!$components{$k});
     }
 
     $self->verbose("Active components in the profile: ", join(", ", keys(%components)));
@@ -420,11 +420,11 @@ sub get_all_components
     foreach my $cname (keys(%$t)) {
         my $active = $t->{$cname}->{active};
 
-        if (! defined($active)) {
+        if (!defined($active)) {
             $self->warn("Active flag not found for component $cname.");
         }
 
-        $components{$cname} = $active; 
+        $components{$cname} = $active;
     }
     $self->verbose("Components in the profile: ", join(", ", keys(%components)));
 
@@ -462,12 +462,13 @@ sub skip_components
             push(@skip_no_comp, $sk);
         }
     }
-    
+
     $self->info("Skipping components: ", join(",", @skip)) if @skip;
-    $self->info("Skipping components (but not defined/active): ", join(",", @skip_no_comp)) if @skip_no_comp;
+    $self->info("Skipping components (but not defined/active): ", join(",", @skip_no_comp))
+        if @skip_no_comp;
 
     my %to_skip;
-    @to_skip{@skip} = (1) x @skip;
+    @to_skip{@skip}         = (1) x @skip;
     @to_skip{@skip_no_comp} = (0) x @skip_no_comp;
 
     return %to_skip;
@@ -521,7 +522,7 @@ sub get_proxies
 
     my $msg = " for components " . join(',', keys(%$comps));
     if (@pxs) {
-        $self->verbose("Created ", scalar @pxs," ComponentProxy instances $msg");
+        $self->verbose("Created ", scalar @pxs, " ComponentProxy instances $msg");
     } else {
         $self->error("Failed to create ComponentProxy $msg");
     }
@@ -543,9 +544,17 @@ sub _getComponents
         my %all_comps = $self->get_all_components();
         foreach my $name (@{$self->{NAMES}}) {
             if (exists($all_comps{$name})) {
-                $comps{$name} = 1;
-                $self->verbose("Selected inactive component $name") if (! $all_comps{$name});
+                if ($all_comps{$name}) {
+                    $comps{$name} = 1;
+                } else {
+
+                    # will fail because ComponentProxy instance can only be created
+                    # with active component
+                    $self->error("Inactive component $name specified");
+                    return;
+                }
             } else {
+
                 # invalid component name
                 $self->error("Non-existing component $name specified.");
                 return;
@@ -553,25 +562,27 @@ sub _getComponents
         }
 
         if (!%comps) {
-            # can we get here? 
-            $self->error('No (in)active components found in profile for names ', 
-                         join(',', @{$self->{NAMES}}));
+
+            # can we get here?
+            $self->error('No active components found in profile for names ',
+                join(',', @{$self->{NAMES}}));
             return;
         }
     } else {
+
         # all active components
         %comps = $self->get_component_list();
         if (!%comps) {
             $self->error('No active components found in profile');
             return;
         }
-    };
+    }
 
-    $self->skip_components(\%comps) if $self->{SKIP};
+    $self->skip_components(\%comps) if @{$self->{SKIP}};
 
     my @comp_proxylist = $self->get_proxies(\%comps);
 
-    return if (! @comp_proxylist);
+    return if (!@comp_proxylist);
 
     $self->{'CLIST'} = \@comp_proxylist;
 
@@ -599,8 +610,14 @@ sub _initialize
     $self->{CCM_CONFIG} = $config;
     $self->{SKIP}       = _parse_skip_args($skip);
     $self->{NAMES}      = \@names;
+    $self->{CLIST}      = [];
+    
+    my $res = $self->_getComponents();
+    return $res if (defined($res));
+    
+    $self->{CLIST} = undef;
+    return SUCCESS;
 
-    return $self->_getComponents();
 }
 
 =pod
