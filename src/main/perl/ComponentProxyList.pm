@@ -1,5 +1,5 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
 
@@ -34,26 +34,6 @@ NCD::ComponentProxyList - component proxy list class
 =head1 DESCRIPTION
 
 Instantiation, execution and management of ComponentProxy object instances.
-
-=over
-
-=back
-
-=head1 AUTHOR
-
-German Cancio <German.Cancio@cern.ch>
-
-=head1 VERSION
-
-$Id: ComponentProxyList.pm.cin,v 1.17 2008/10/21 15:54:53 munoz Exp $
-
-=cut
-
-#------------------------------------------------------------
-#                      Public Methods/Functions
-#------------------------------------------------------------
-
-=pod
 
 =back
 
@@ -550,5 +530,4 @@ sub _initialize
     return $self->_getComponents();
 }
 
-#+#############################################################################
 1;
