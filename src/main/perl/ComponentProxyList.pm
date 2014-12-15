@@ -388,9 +388,11 @@ sub get_component_list
 
     my %components = $self->get_all_components();
     foreach my $k (keys %components) {
-        delete $components{$k} if (!$components{$k});
+        delete $components{$k} if (! $components{$k});
     }
+
     $self->verbose("Active components in the profile: ", join(", ", keys(%components)));
+
     return %components;
 }
 
@@ -413,19 +415,19 @@ sub get_all_components
         return;
     }
 
-    my %cmps = $el->getHash();
+    my $t = $el->getTree();
 
-    foreach my $cname (keys(%cmps)) {
-        my $is_active;
-        if ($cmps{$cname}->hasExists('active')) {
-            $is_active = $cmps{$cname}->getElement('active')->getValue() eq 'true';
-        } else {
-            $self->warning("Active flag not found for component $cname.");
+    foreach my $cname (keys(%$t)) {
+        my $active = $t->{$cname}->{active};
+
+        if (! defined($active)) {
+            $self->warn("Active flag not found for component $cname.");
         }
 
-        $components{$cname} = $is_active;
+        $components{$cname} = $active; 
     }
     $self->verbose("Components in the profile: ", join(", ", keys(%components)));
+
     return %components;
 }
 
