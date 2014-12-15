@@ -16,7 +16,7 @@ our $this_app;
 
 *this_app = \$main::this_app;
 
-my $ec=LC::Exception::Context->new->will_store_errors;
+my $ec = LC::Exception::Context->new->will_store_errors;
 
 =pod
 
@@ -49,7 +49,6 @@ $Id: ComponentProxyList.pm.cin,v 1.17 2008/10/21 15:54:53 munoz Exp $
 
 =cut
 
-
 #------------------------------------------------------------
 #                      Public Methods/Functions
 #------------------------------------------------------------
@@ -64,20 +63,24 @@ $Id: ComponentProxyList.pm.cin,v 1.17 2008/10/21 15:54:53 munoz Exp $
 
 =cut
 
-
-sub reportComponents {
-    my $self=shift;
+sub reportComponents
+{
+    my $self = shift;
 
     $self->report('active components found inside profile /software/components:');
-    $self->report(sprintf("%-15s%-7s%-29s%-29s","name","file?","predeps","postdeps"));
+    $self->report(sprintf("%-15s%-7s%-29s%-29s", "name", "file?", "predeps", "postdeps"));
     $self->report("-------------------------------------------------------------------");
     my $comp;
     foreach $comp (@{$self->{'CLIST'}}) {
-        $self->report(sprintf("%-15s%-7s%-29s%-29s",$comp->name().':',
-                              ($comp->hasFile() ? "yes":"no"),
-                              join(',',@{$comp->getPreDependencies()}),
-                              join(',',@{$comp->getPostDependencies()})
-                          ));
+        $self->report(
+            sprintf(
+                "%-15s%-7s%-29s%-29s",
+                $comp->name() . ':',
+                ($comp->hasFile() ? "yes" : "no"),
+                join(',', @{$comp->getPreDependencies()}),
+                join(',', @{$comp->getPostDependencies()})
+            )
+        );
     }
     return SUCCESS;
 }
@@ -90,8 +93,8 @@ sub pre_config_actions
     return 1 if !$hook;
 
     my %opts = (log => $self);
-    $opts{stdin} = encode_json($comps) if $comps;
-    $opts{timeout} = $timeout if $timeout;
+    $opts{stdin}   = encode_json($comps) if $comps;
+    $opts{timeout} = $timeout            if $timeout;
 
     my $proc = CAF::Process->new([$hook], %opts);
     $proc->execute();
@@ -114,8 +117,10 @@ sub post_config_actions
 
     return 1 if !$hook;
 
-    my %opts = (log => $self,
-                stdin => encode_json($report));
+    my %opts = (
+        log   => $self,
+        stdin => encode_json($report)
+    );
     $opts{timeout} = $timeout if $timeout;
 
     my $proc = CAF::Process->new([$hook], %opts);
@@ -143,28 +148,29 @@ sub run_all_components
         my $name = $comp->name();
         $self->info("running component: $name");
         $self->report('---------------------------------------------------------');
-        my @broken_dep=();
+        my @broken_dep = ();
         foreach my $predep (@{$comp->getPreDependencies()}) {
-            if (!$nodeps && exists($status->{ERR_COMPS}->{$predep}))  {
-                push (@broken_dep,$predep);
+            if (!$nodeps && exists($status->{ERR_COMPS}->{$predep})) {
+                push(@broken_dep, $predep);
                 $self->debug(1, "predependencies broken for component $name: $predep");
             }
         }
         if (@broken_dep) {
-            my $err = "Cannot run component: $name as pre-dependencies failed: " .
-                    join(",", @broken_dep);
+            my $err =
+                "Cannot run component: $name as pre-dependencies failed: " . join(",", @broken_dep);
             $self->error($err);
             $status->{'ERRORS'}++;
             $status->{ERR_COMPS}->{$name} = 1;
             $self->set_state($name, $err);
         } else {
+
             # we set the state to "unknown" (in effect) just before we
             # run configure, so that the state will reflect that this component
             # has still not run to completion. All code-paths following this
             # MUST either set_state or clear_state.
             $self->set_state($name, "");
 
-            my $ret=$comp->executeConfigure();
+            my $ret = $comp->executeConfigure();
             if (!defined($ret)) {
                 my $err = "cannot execute configure on component " . $name;
                 $self->error($err);
@@ -182,7 +188,7 @@ sub run_all_components
                     $status->{WARN_COMPS}->{$name} = $ret->{WARNINGS};
                 }
 
-                $status->{'ERRORS'} += $ret->{'ERRORS'};
+                $status->{'ERRORS'}   += $ret->{'ERRORS'};
                 $status->{'WARNINGS'} += $ret->{'WARNINGS'};
             }
         }
@@ -193,27 +199,27 @@ sub run_all_components
 # their pre and post-dependencies, in the correct order.  It will also
 # execute the $pre_hook with an optional $pre_timeout and the
 # $post_hook with a $post_timeout.
-sub executeConfigComponents {
-    my ($self, $pre_hook, $pre_timeout, $post_hook, $post_timeout)  = @_;
+sub executeConfigComponents
+{
+    my ($self, $pre_hook, $pre_timeout, $post_hook, $post_timeout) = @_;
 
     $self->info("executing configure on components....");
     $self->report();
 
-    my $global_status= {
-        'ERRORS'=>0,
-        'WARNINGS'=>0
+    my $global_status = {
+        'ERRORS'   => 0,
+        'WARNINGS' => 0
     };
 
-    my $sortedList=$self->_sortComponents($self->{'CLIST'});
+    my $sortedList = $self->_sortComponents($self->{'CLIST'});
 
-    my $pre_input = { 'components' => [map({name => $_->name()}, @$sortedList)] };
+    my $pre_input = {'components' => [map({name => $_->name()}, @$sortedList)]};
 
     if (!defined($sortedList)) {
         $self->error("cannot sort components according to dependencies");
         $global_status->{'ERRORS'}++;
     } elsif ($self->pre_config_actions($pre_hook, $pre_timeout, $pre_input)) {
-        $self->run_all_components($sortedList, $this_app->option("nodeps"),
-                                  $global_status);
+        $self->run_all_components($sortedList, $this_app->option("nodeps"), $global_status);
     } else {
         foreach my $cmp (@$sortedList) {
             $self->set_state($cmp->name(), "Disallowed by policy");
@@ -228,17 +234,21 @@ sub executeConfigComponents {
     return $global_status;
 }
 
-sub get_statefile {
+sub get_statefile
+{
     my ($self, $comp) = @_;
     if ($this_app->option('state')) {
+
         # the state directory could be volative
         mkdir($this_app->option('state')) unless -d $this_app->option('state');
         my $file = $this_app->option('state') . '/' . $comp;
         if ($file =~ m{^(\/[^\|<>&]*)$}) {
+
             # Must be an absolute path, no shell metacharacters
             return $1;
         } else {
             $self->warn("state filename $file is inappropriate");
+
             # Don't touch the state file
             return undef;
         }
@@ -247,7 +257,8 @@ sub get_statefile {
 }
 
 # Mark a component as failed within our state directory
-sub set_state {
+sub set_state
+{
     my ($self, $comp, $msg) = @_;
     if ($this_app->option('noaction')) {
         if (!$msg) {
@@ -268,9 +279,9 @@ sub set_state {
     }
 }
 
-
 # Mark a component as succeeded within our state directory
-sub clear_state {
+sub clear_state
+{
     my ($self, $comp) = @_;
     if ($this_app->option('noaction')) {
         $self->info("would mark state of component as success");
@@ -282,28 +293,33 @@ sub clear_state {
     }
 }
 
-sub executeUnconfigComponent {
-    my $self=shift;
+sub executeUnconfigComponent
+{
+    my $self = shift;
 
-    my $comp=@{$self->{'CLIST'}}[0];
+    my $comp = @{$self->{'CLIST'}}[0];
 
-    my %global_status=(
-        'ERRORS'=>0,
-        'WARNINGS'=>0
+    my %global_status = (
+        'ERRORS'   => 0,
+        'WARNINGS' => 0
     );
 
     unless (defined $comp) {
         $self->error('could not instantiate component');
         $global_status{'ERRORS'}++;
     } else {
-        my $ret=$comp->executeUnconfigure();
+        my $ret = $comp->executeUnconfigure();
         unless (defined $ret) {
-            $self->error('cannot execute unconfigure on component '.$comp->name());
+            $self->error('cannot execute unconfigure on component ' . $comp->name());
             $global_status{'ERRORS'}++;
         } else {
-            $self->report('unconfigure on component '.$comp->name().' executed, '.
-                              $ret->{'ERRORS'}. ' errors, '.
-                                  $ret->{'WARNINGS'}. ' warnings');
+            $self->report('unconfigure on component '
+                    . $comp->name()
+                    . ' executed, '
+                    . $ret->{'ERRORS'}
+                    . ' errors, '
+                    . $ret->{'WARNINGS'}
+                    . ' warnings');
             $global_status{'ERRORS'}   += $ret->{'ERRORS'};
             $global_status{'WARNINGS'} += $ret->{'WARNINGS'};
         }
@@ -311,39 +327,37 @@ sub executeUnconfigComponent {
     return \%global_status;
 }
 
-
-
 # protected methods
-
 
 # topological Sort
 # preliminary mkxprof based version, to be replaced by a
 # qsort call in the next alpha release.
 #
-sub _topoSort {
+sub _topoSort
+{
     # Topological sort (Aho, Hopcroft & Ullman)
 
-    my $self=shift;
-    my $v = shift;              # Current vertex
-    my $after = shift;          # Hash of component followers
-    my $visited = shift;        # Visited markers
-    my $active = shift; # Components on this path (to check for loops)
-    my $stack = shift;  # Output stack
-    my $depth = shift;  # Depth
+    my $self    = shift;
+    my $v       = shift;    # Current vertex
+    my $after   = shift;    # Hash of component followers
+    my $visited = shift;    # Visited markers
+    my $active  = shift;    # Components on this path (to check for loops)
+    my $stack   = shift;    # Output stack
+    my $depth   = shift;    # Depth
 
     return SUCCESS if ($visited->{$v});
     $visited->{$v} = $active->{$v} = $depth;
     foreach my $n (keys(%{$after->{$v}})) {
         if ($active->{$n}) {
-            my @loop = sort { $active->{$a} <=> $active->{$b} } keys(%$active);
-            $self->error("dependency ordering loop detected: ",
-                         join(' < ',(@loop,$n)));
+            my @loop = sort {$active->{$a} <=> $active->{$b}} keys(%$active);
+            $self->error("dependency ordering loop detected: ", join(' < ', (@loop, $n)));
             return undef;
         }
-        return undef unless
-            ($self->_topoSort($n,$after,$visited,$active,$stack,$depth+1));
+        return undef
+            unless ($self->_topoSort($n, $after, $visited, $active, $stack, $depth + 1));
     }
-    delete $active->{$v}; unshift @$stack,($v);
+    delete $active->{$v};
+    unshift @$stack, ($v);
     return SUCCESS;
 }
 
@@ -352,18 +366,18 @@ sub _topoSort {
 #
 sub _sortComponents
 {
-    my ($self,$unsortedcompProxyList)=@_;
+    my ($self, $unsortedcompProxyList) = @_;
 
     $self->verbose("sorting components according to dependencies...");
 
     my %comps;
-    %comps=map {$_->name(),$_} @$unsortedcompProxyList;
-    my $after={};
+    %comps = map {$_->name(), $_} @$unsortedcompProxyList;
+    my $after = {};
     foreach my $comp (@$unsortedcompProxyList) {
-        my $name=$comp->name();
+        my $name = $comp->name();
         $after->{$name} ||= {};
-        my @pre=@{$comp->getPreDependencies()};
-        my @post=@{$comp->getPostDependencies()};
+        my @pre  = @{$comp->getPreDependencies()};
+        my @post = @{$comp->getPostDependencies()};
         foreach my $p (@pre) {
             if (defined $comps{$p}) {
                 $after->{$p}->{$name} = 1;
@@ -373,22 +387,22 @@ sub _sortComponents
             }
         }
         foreach my $p (@post) {
-            if (!defined $comps{$p} && ! $this_app->option('nodeps')) {
+            if (!defined $comps{$p} && !$this_app->option('nodeps')) {
                 $self->error(qq{post-requisite for component "$name"  does not exist: $p});
                 return undef;
             }
-            $after->{$name}->{$p}=1;
+            $after->{$name}->{$p} = 1;
         }
     }
-    my $visited={};
-    my $sorted=[()];
-    foreach my $c (sort keys (%$after)) {
-        unless ($self->_topoSort($c,$after,$visited,{},$sorted,1)) {
+    my $visited = {};
+    my $sorted  = [()];
+    foreach my $c (sort keys(%$after)) {
+        unless ($self->_topoSort($c, $after, $visited, {}, $sorted, 1)) {
             $self->error("cannot sort dependencies");
             return undef;
         }
     }
-    my @sortedcompProxyList=map {$comps{$_}} @$sorted;
+    my @sortedcompProxyList = map {$comps{$_}} @$sorted;
     return \@sortedcompProxyList;
 }
 
@@ -424,8 +438,7 @@ sub get_component_list
         $modules{$cname} = 1;
     }
 
-    $self->verbose("Active components in the profile: ",
-                   join(", ", keys(%modules)));
+    $self->verbose("Active components in the profile: ", join(", ", keys(%modules)));
     return %modules;
 }
 
@@ -448,7 +461,7 @@ sub missing_deps
 {
     my ($self, $proxy, $comps) = @_;
 
-    my @pre = @{$proxy->getPreDependencies()};
+    my @pre  = @{$proxy->getPreDependencies()};
     my @post = @{$proxy->getPostDependencies()};
 
     my ($ret, @deps);
@@ -482,9 +495,9 @@ sub get_proxies
         }
         my (@deps) = $self->missing_deps($px, $comps);
 
-	push(@pxs, $px);
-	push(@c, grep(!exists($comps->{$_}), @deps));
-	$comps->{$_} = 1 foreach @deps;
+        push(@pxs, $px);
+        push(@c, grep(!exists($comps->{$_}), @deps));
+        $comps->{$_} = 1 foreach @deps;
     }
     return @pxs;
 }
@@ -497,7 +510,7 @@ sub get_proxies
 
 sub _getComponents
 {
-    my ($self)=@_;
+    my ($self) = @_;
 
     my %comps = map(($_ => 1), @{$self->{'NAMES'}});
 
@@ -510,12 +523,11 @@ sub _getComponents
 
     $self->skip_components(\%comps) if $self->{SKIP};
 
-    my @comp_proxylist= $self->get_proxies(\%comps);
+    my @comp_proxylist = $self->get_proxies(\%comps);
 
     $self->{'CLIST'} = \@comp_proxylist;
     return SUCCESS;
 }
-
 
 =pod
 
@@ -527,12 +539,13 @@ object initialization (done via new)
 
 =cut
 
-sub _initialize {
-    my ($self,$config,$skip,@names)=@_;
-    $self->{'CCM_CONFIG'}=$config;
-    $self->{'SKIP'}=$skip;
+sub _initialize
+{
+    my ($self, $config, $skip, @names) = @_;
+    $self->{'CCM_CONFIG'} = $config;
+    $self->{'SKIP'}       = $skip;
     chomp($self->{SKIP}) if $skip;
-    $self->{'NAMES'}=\@names;
+    $self->{'NAMES'} = \@names;
 
     return $self->_getComponents();
 }
