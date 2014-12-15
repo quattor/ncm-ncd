@@ -5,8 +5,6 @@ use Test::More;
 use NCD::ComponentProxyList;
 use CAF::Object;
 use Test::Quattor qw(get-components-simple);
-use Readonly;
-use JSON::XS;
 
 $CAF::Object::NoAction = 1;
 
@@ -48,24 +46,25 @@ $cl = NCD::ComponentProxyList->new($cfg, undef, qw(adep));
 is(scalar(@{$cl->{CLIST}}), 2,
    "Dependencies are loaded even if not directly requested");
 
-$cl = NCD::ComponentProxyList->new($cfg, undef, qw(aninactive));
-is(scalar(@{$cl->{CLIST}}), 2, "An inactive component was loaded");
-
-$cl = NCD::ComponentProxyList->new($cfg, undef, qw(doesnotexist));
-is($cl, undef, "Failure on non-existing component");
-
-my %comps = $cl->get_all_components();
-is_deeply(\%comps,{
+my %all_comps = $cl->get_all_components();
+is_deeply(\%all_comps,{
     acomponent => 1,
     adep => 1,
     aninactive => 0,
     aninvalid => undef,
 }, "All components and their active state");
     
-%comps = $cl->get_component_list();    
+my %comps = $cl->get_component_list();    
 is_deeply(\%comps,{
     acomponent => 1,
     adep => 1,
 }, "All active components");
+
+$cl = NCD::ComponentProxyList->new($cfg, undef, qw(doesnotexist));
+is($cl->{CLIST}, undef, "Failure on non-existing component");
+
+$cl = NCD::ComponentProxyList->new($cfg, undef, qw(aninactive));
+is($cl->{CLIST}, undef, "Failure on inactive component");
+
 
 done_testing();
