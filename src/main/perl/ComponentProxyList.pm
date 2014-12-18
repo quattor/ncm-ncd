@@ -304,32 +304,32 @@ sub executeUnconfigComponent
 
 # protected methods
 
-# topological Sort
+# Topological sort (Aho, Hopcroft & Ullman)
 # preliminary mkxprof based version, to be replaced by a
 # qsort call in the next alpha release.
 #
+# Arguments
+#   C<v>: Current vertex
+#   C<after>: Hash of component followers
+#   C<visited>: Visited markers
+#   C<active>: Components on this path (to check for loops)
+#   C<stack>: Output stack
+#   C<depth>: Depth
+#
 sub _topoSort
 {
-    # Topological sort (Aho, Hopcroft & Ullman)
-
-    my $self    = shift;
-    my $v       = shift;    # Current vertex
-    my $after   = shift;    # Hash of component followers
-    my $visited = shift;    # Visited markers
-    my $active  = shift;    # Components on this path (to check for loops)
-    my $stack   = shift;    # Output stack
-    my $depth   = shift;    # Depth
+    my ($self, $v, $after, $visited, $active, $stack, $depth) = @_;
 
     return SUCCESS if ($visited->{$v});
+
     $visited->{$v} = $active->{$v} = $depth;
     foreach my $n (keys(%{$after->{$v}})) {
         if ($active->{$n}) {
             my @loop = sort {$active->{$a} <=> $active->{$b}} keys(%$active);
             $self->error("dependency ordering loop detected: ", join(' < ', (@loop, $n)));
-            return undef;
+            return;
         }
-        return undef
-            unless ($self->_topoSort($n, $after, $visited, $active, $stack, $depth + 1));
+        return unless ($self->_topoSort($n, $after, $visited, $active, $stack, $depth + 1));
     }
     delete $active->{$v};
     unshift @$stack, ($v);
@@ -387,7 +387,7 @@ sub get_component_list
     my ($self) = @_;
 
     my %components = $self->get_all_components();
-    foreach my $k (keys %components) {
+    foreach my $k (keys(%components)) {
         delete $components{$k} if (!$components{$k});
     }
 
@@ -415,7 +415,8 @@ sub get_all_components
         return;
     }
 
-    my $t = $el->getTree();
+    # depth=2 for components name and active attribute
+    my $t = $el->getTree(2);
 
     foreach my $cname (keys(%$t)) {
         my $active = $t->{$cname}->{active};

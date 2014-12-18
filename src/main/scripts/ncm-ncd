@@ -483,14 +483,10 @@ if ($this_app->option('unconfigure')) {
     $msg    = 'configure';
 }
 
-my @component_names = ();
-
-# remove duplicates
-my $last = '';
-foreach (sort(@ARGV)) {
-    push(@component_names, $_) if ($last ne $_);
-    $last = $_;
-}
+# remove dulpicates and sort
+my @component_names = sort(keys(map {$_ => 1} @ARGV));
+$this_app->verbose("Sorted unique components ", join(',', @component_names), 
+                   " from commandline ", join(',', @ARGV));
 
 unless ($this_app->option('all') || scalar(@component_names)) {
     $this_app->error("Please provide component names as parameters, or use --all");
@@ -568,10 +564,6 @@ if ($ret->{'WARNINGS'} > 0) {
 
 }
 
-$this_app->$fun(
-    $ret->{'ERRORS'}, ' errors, ',  
-    $ret->{'WARNINGS'}, ' warnings ', 
-    "executing $msg"
-);
+$this_app->$fun($ret->{'ERRORS'}, ' errors, ', $ret->{'WARNINGS'}, ' warnings ', "executing $msg");
 
 $this_app->finish($exit);
