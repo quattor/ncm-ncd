@@ -415,8 +415,8 @@ sub get_all_components
         return;
     }
 
-    # depth=2 for components name and active attribute
-    my $t = $el->getTree(2);
+    # depth=3 for components name, active attribute, and value of attribute
+    my $t = $el->getTree(3);
 
     foreach my $cname (keys(%$t)) {
         my $active = $t->{$cname}->{active};
@@ -532,51 +532,44 @@ sub get_proxies
 
 #
 # _getComponents(): boolean
-# instantiates the list of components specified in new(). If
-# the list is empty, returns all components flagged as 'active'
+# instantiates the list of components specified in new().
+# If the list is empty, instantiates all active components.
 #
 
 sub _getComponents
 {
     my ($self) = @_;
 
-    my %comps;
+    my (%comps, $error_msg);
     if (@{$self->{'NAMES'}}) {
         my %all_comps = $self->get_all_components();
         foreach my $name (@{$self->{NAMES}}) {
-            if (exists($all_comps{$name})) {
-                if ($all_comps{$name}) {
-                    $comps{$name} = 1;
-                } else {
-
-                    # will fail because ComponentProxy instance can only be created
-                    # with active component
-                    $self->error("Inactive component $name specified");
-                    return;
-                }
+            if ($all_comps{$name}) {
+                $comps{$name} = 1;
             } else {
+                # will fail because ComponentProxy instance 
+                # can only be created with active component
+                my $msg = "Inactive";
 
-                # invalid component name
-                $self->error("Non-existing component $name specified.");
+                if (!defined($all_comps{$name})) {
+                    $msg = "Non-existing";
+                }
+                $self->error("$msg component $name specified");
                 return;
             }
         }
-
-        if (!%comps) {
-
-            # can we get here?
-            $self->error('No active components found in profile for names ',
-                join(',', @{$self->{NAMES}}));
-            return;
-        }
+        # This should not be needed
+        $error_msg = 'No active components for names ' . join(',', @{$self->{NAMES}});
     } else {
 
         # all active components
-        %comps = $self->get_component_list();
-        if (!%comps) {
-            $self->error('No active components found in profile');
-            return;
-        }
+        %comps     = $self->get_component_list();
+        $error_msg = 'No active components found in profile';
+    }
+
+    if (!%comps) {
+        $self->error($error_msg);
+        return;
     }
 
     $self->skip_components(\%comps) if @{$self->{SKIP}};
@@ -612,10 +605,10 @@ sub _initialize
     $self->{SKIP}       = _parse_skip_args($skip);
     $self->{NAMES}      = \@names;
     $self->{CLIST}      = [];
-    
+
     my $res = $self->_getComponents();
     return $res if (defined($res));
-    
+
     $self->{CLIST} = undef;
     return SUCCESS;
 
