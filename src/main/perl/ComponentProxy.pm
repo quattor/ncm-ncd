@@ -1,5 +1,5 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
 
@@ -33,9 +33,6 @@ use constant COMPONENT_BASE => "/usr/lib/perl/NCM/Component/";
 
 NCD::ComponentProxy - component proxy class
 
-=head1 SYNOPSIS
-
-
 =head1 INHERITANCE
 
   CAF::Object, CAF::Reporter
@@ -44,29 +41,6 @@ NCD::ComponentProxy - component proxy class
 
 Provides management functions for accessing and executing NCM
 components.
-
-=over
-
-=back
-
-=head1 AUTHOR
-
-German Cancio <German.Cancio@cern.ch>
-
-=head1 VERSION
-
-$Id: ComponentProxy.pm.cin,v 1.34 2008/09/26 15:59:34 munoz Exp $
-
-=cut
-
-
-#------------------------------------------------------------
-#                      Public Methods/Functions
-#------------------------------------------------------------
-
-=pod
-
-=back
 
 =head2 Public methods
 
@@ -296,7 +270,11 @@ sub writeComponent {
 
 =pod
 
+=back
+
 =head2 Private methods
+
+=over
 
 =item _initialize($comp_name, $config)
 
@@ -604,9 +582,10 @@ sub _execute {
     return $retval;
 }
 
+=pod
 
+=back
 
+=cut
 
-
-#+#############################################################################
 1;

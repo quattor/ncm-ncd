@@ -10,3 +10,6 @@ prefix "/software/components";
 "adep/dependencies/pre/0" = "acomponent";
 "adep/dependencies/post" = list();
 "adep/dispatch" = true;
+
+"aninactive/active" = false;
+"aninvalid/noactiveset" = 0;
