@@ -483,8 +483,8 @@ if ($this_app->option('unconfigure')) {
     $msg    = 'configure';
 }
 
-# remove dulpicates and sort
-my @component_names = sort(keys(map {$_ => 1} @ARGV));
+# remove duplicates and sort
+my @component_names = sort(keys( %{ {map {$_ => 1} @ARGV} } ));
 $this_app->verbose("Sorted unique components ", join(',', @component_names), 
                    " from commandline ", join(',', @ARGV));
 
