@@ -9,11 +9,21 @@ use Readonly;
 use JSON::XS;
 use LC::Exception;
 use Test::MockModule;
-
-my $mock = Test::MockModule->new("NCD::ComponentProxy");
-$mock->mock("hasFile", 1);
+use Cwd;
+use Readonly;
+Readonly my $COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
 
 $CAF::Object::NoAction = 1;
+
+my $error = 0;
+my $lasterror;
+my $mock = Test::MockModule->new('NCD::ComponentProxy');
+$mock->mock('error', sub (@) {
+    my $self = shift;
+    $lasterror = join(" ", @_);
+    diag("ERROR: $lasterror");
+    $error++;
+});
 
 # We'll be testing that some instantiations fail (non-existing
 # component paths or inactive components).  We just ignore these LC
@@ -29,6 +39,10 @@ sub ignore
 $EC->error_handler(\&ignore);
 $EC->warning_handler(\&ignore);
 
+# It is in INC via prove commandline
+my $incpath = getcwd()."/src/test/perl";
+# Change COMPONENT_BASE to this path for further testing
+my $modpath = "$incpath/NCM/Component";
 
 =pod
 
@@ -53,6 +67,17 @@ my $cfg = get_config_for_profile("component-load");
 my $cmp = NCD::ComponentProxy->new("foo", $cfg);
 isa_ok($cmp, "NCD::ComponentProxy", "Active component foo is loaded");
 
+is($cmp->{COMPONENT_BASE},
+   $COMPONENT_BASE,
+   "Default module base path as expected");
+is($cmp->getFile(), "$COMPONENT_BASE/foo.pm",
+   "getFile returned expected module filename");
+
+$cmp->{COMPONENT_BASE} = $modpath;
+is($cmp->getFile(), "$modpath/foo.pm",
+   "getFile returned expected module filename for foo");
+ok($cmp->hasFile(), "Found NCM::Component::foo");
+
 my $c;
 
 eval {$c = $cmp->_load();};
@@ -67,6 +92,7 @@ isa_ok($c, "NCM::Component::foo", "Component foo correctly instantiated");
 
 $cmp = NCD::ComponentProxy->new("bar", $cfg);
 isa_ok($cmp, "NCD::ComponentProxy", "Component bar is loaded");
+$cmp->{COMPONENT_BASE} = $modpath;
 
 eval {$c = $cmp->_load() };
 ok(!$@, "No exceptions raised when loading foo");
@@ -82,6 +108,8 @@ is($c->prefix(), "/software/components/bar",
 
 $cmp = NCD::ComponentProxy->new("baz", $cfg);
 isa_ok($cmp, "NCD::ComponentProxy", "Component baz is loaded");
+$cmp->{COMPONENT_BASE} = $modpath;
+
 eval {$c = $cmp->_load()};
 ok(!$@, "No exceptions raised when loading spma::ips");
 is($c->prefix(), "/software/components/baz",
@@ -93,8 +121,50 @@ is($c->prefix(), "/software/components/baz",
 
 =cut
 
-$cmp->{MODULE} = "klhljhljh";
+# module is missing
+$cmp->{MODULE} = "doesnotexist";
+ok(! -f $cmp->getFile(), "Module does not exists");
+ok(! $cmp->hasFile(), "hasFile fails on non-existing module");
+
+$error = 0;
 $c = $cmp->_load();
 is($c, undef, "Non-existing module is not loaded");
+is($error, 1, "error logged for non-existing module");
+like($lasterror, qr{component doesnotexist is not installed},
+     "non-existing module error message");
+
+# invalid perl code
+$error = 0;
+$cmp->{MODULE} = "invalidperl";
+ok($cmp->hasFile(), "invalidperl module found");
+
+$c = $cmp->_load();
+is($c, undef, "invalidperl module is not loaded");
+is($error, 1, "error logged for invalidperl");
+like($lasterror, qr{bad Perl code in},
+     "invalid perl error message");
+
+# missing EC package variable
+$error = 0;
+$cmp->{MODULE} = "missingec";
+ok($cmp->hasFile(), "missingec module found");
+
+$c = $cmp->_load();
+is($c, undef, "module with missing EC is not loaded");
+is($error, 1, "error logged for missing EC package variable");
+like($lasterror, qr{bad component exception handler},
+     "missing EC package variable error message");
+
+# borkennew is missing a new method (i.e. not a subclass of NCM::Component)
+$error = 0;
+$cmp->{MODULE} = "brokennew";
+ok($cmp->hasFile(), "brokennew module found");
+
+$c = $cmp->_load();
+is($c, undef, "module with broken/missing new method is not loaded");
+is($error, 1, "error logged for brokennew");
+like($lasterror, qr{instantiation statement fails},
+     "broken new error message");
+
 
 done_testing();
