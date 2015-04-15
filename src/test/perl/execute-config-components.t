@@ -10,6 +10,18 @@ use Test::MockModule;
 use CAF::Object;
 use Carp qw(cluck);
 
+BEGIN {
+    our $this_app = CAF::Application->new('app');
+    $this_app->{CONFIG}->define("state");
+    $this_app->{CONFIG}->define("autodeps");
+    $this_app->{CONFIG}->define("noaction");
+    $this_app->{CONFIG}->set('noaction', 1);
+    $this_app->{CONFIG}->define("template-path");
+    $this_app->{CONFIG}->set('template-path', "doesnotexist");
+    $this_app->{CONFIG}->define("nodeps");
+    $this_app->{CONFIG}->set('nodeps', 0);
+}
+
 $CAF::Object::NoAction = 1;
 
 my $mockcomponent = Test::MockModule->new("NCD::ComponentProxy");
@@ -61,10 +73,6 @@ method.
 
 =cut
 
-
-our $this_app = CAF::Application->new('app');
-$this_app->{CONFIG}->define("nodeps");
-$this_app->{CONFIG}->set('nodeps', 0);
 
 my $cfg = get_config_for_profile('execute-config-components');
 

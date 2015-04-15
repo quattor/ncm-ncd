@@ -29,6 +29,7 @@ Succeed always.
 
 
 our $this_app = CAF::Application->new('app');
+$this_app->{CONFIG}->define("autodeps");
 $this_app->{CONFIG}->define("nodeps");
 $this_app->{CONFIG}->set('nodeps', 0);
 
