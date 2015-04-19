@@ -141,7 +141,7 @@ sub getPostDependencies {
 
 =pod
 
-=item getFile()
+=item getComponentFilename()
 
 Returns the absolute filename of the components perl module.
 
@@ -150,7 +150,7 @@ module should be looked for.
 
 =cut
 
-sub getFile {
+sub getComponentFilename {
     my ($self, $base) = @_;
 
     $base ||= $self->{'COMPONENT_BASE'};
@@ -179,7 +179,7 @@ module should be looked for.
 sub hasFile {
     my ($self, $base) = @_;
 
-    my $filename = $self->getFile($base);
+    my $filename = $self->getComponentFilename($base);
 
     return -r $filename ? 1:0 ;
 }
@@ -268,7 +268,7 @@ sub _load {
     my $mod = $self->module();
     my $name = $self->name();
 
-    my $mod_fn = $self->getFile();
+    my $mod_fn = $self->getComponentFilename();
     if (!$self->hasFile()) {
         # No arguments passed to hasFile
         $self->error("component $mod is not installed ",

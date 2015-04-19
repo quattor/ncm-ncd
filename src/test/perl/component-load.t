@@ -79,12 +79,12 @@ isa_ok($cmp, "NCD::ComponentProxy", "Active component foo is loaded");
 is($cmp->{COMPONENT_BASE},
    $COMPONENT_BASE,
    "Default module base path as expected");
-is($cmp->getFile(), "$COMPONENT_BASE/foo.pm",
-   "getFile returned expected module filename");
+is($cmp->getComponentFilename(), "$COMPONENT_BASE/foo.pm",
+   "getComponentFilename returned expected module filename");
 
 $cmp->{COMPONENT_BASE} = $modpath;
-is($cmp->getFile(), "$modpath/foo.pm",
-   "getFile returned expected module filename for foo");
+is($cmp->getComponentFilename(), "$modpath/foo.pm",
+   "getComponentFilename returned expected module filename for foo");
 ok($cmp->hasFile(), "Found NCM::Component::foo");
 
 my $c;
@@ -132,7 +132,7 @@ is($c->prefix(), "/software/components/baz",
 
 # module is missing
 $cmp->{MODULE} = "doesnotexist";
-ok(! -f $cmp->getFile(), "Module does not exists");
+ok(! -f $cmp->getComponentFilename(), "Module does not exists");
 ok(! $cmp->hasFile(), "hasFile fails on non-existing module");
 
 $error = 0;
