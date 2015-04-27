@@ -25,7 +25,7 @@ my $_COMP_PREFIX='/software/components';
 
 my $ec=LC::Exception::Context->new->will_store_all;
 
-use constant COMPONENT_BASE => "/usr/lib/perl/NCM/Component/";
+use constant COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
 
 =pod
 
@@ -139,6 +139,31 @@ sub getPostDependencies {
     return $self->{'POST_DEPS'};
 }
 
+=pod
+
+=item getComponentFilename()
+
+Returns the absolute filename of the components perl module.
+
+Receives an optional parameter with the base directory where the Perl
+module should be looked for.
+
+=cut
+
+sub getComponentFilename {
+    my ($self, $base) = @_;
+
+    $base ||= $self->{'COMPONENT_BASE'};
+
+    my $mod = $self->module();
+    $mod =~ s{::}{/}g;
+
+    my $fn = "$base/$mod.pm";
+    $fn =~ s{//+}{/}g;
+
+    return $fn;
+}
+
 
 =pod
 
@@ -154,12 +179,9 @@ module should be looked for.
 sub hasFile {
     my ($self, $base) = @_;
 
-    $base ||= COMPONENT_BASE;
+    my $filename = $self->getComponentFilename($base);
 
-    my $mod = $self->module();
-    $mod =~ s{::}{/}g;
-
-    return -r "$base$mod.pm" ? 1:0 ;
+    return -r $filename ? 1:0 ;
 }
 
 =back
@@ -190,6 +212,9 @@ sub _initialize {
 
     $self->{'NAME'}=$1;
     $self->{'CONFIG'}=$config;
+
+    # Default basepath for NCM modules
+    $self->{'COMPONENT_BASE'} = COMPONENT_BASE;
 
     # check for existing and 'active' in node profile
 
@@ -240,37 +265,38 @@ loads the component file in a separate namespace (NCM::Component::$name)
 sub _load {
     my $self=shift;
 
-    my $mod = $self->{MODULE};
-    my $name = $self->{NAME};
+    my $mod = $self->module();
+    my $name = $self->name();
 
-    # try to create the component from configuration information
-    # or check that it is pre-installed
+    my $mod_fn = $self->getComponentFilename();
     if (!$self->hasFile()) {
-        $self->error("component $mod is not installed in /var/ncm/lib/perl/NCM/Component or /usr/lib/perl/NCM/Component");
+        # No arguments passed to hasFile
+        $self->error("component $mod is not installed ",
+                     "(looking for $mod_fn)");
         return undef;
     }
 
-    eval ("use NCM::Component::$mod;");
+    my $package = "NCM::Component::$mod";
+
+    eval ("use $package;");
     if ($@) {
-        $self->error("bad Perl code in NCM::Component::$mod : $@");
+        $self->error("bad Perl code in $package ($mod_fn): $@");
         return undef;
     }
 
     my $comp_EC;
-    eval "\$comp_EC=\$NCM::Component::$mod\:\:EC;";
+    eval "\$comp_EC=\$$package\:\:EC;";
     if ($@ || !defined $comp_EC || ref($comp_EC) ne 'LC::Exception::Context') {
-        $mod =~ s{::}{/}g;
         $self->error('bad component exception handler: $EC is not defined, ',
-                     'not accessible or not of type LC::Exception::Context');
-        $self->error("(note 1: the component package name has to be exactly ",
-                     "'NCM::Component::$mod' - please verify this inside ",
-                     "'/usr/lib/perl/NCM/Component/$mod.pm' or '/var/ncm/lib/perl/NCM/Component/$mod.pm')");
-        $self->error('(note 2: $EC has to be declared in "our (...)")');
+                     'not accessible or not of type LC::Exception::Context',
+                     "(note 1: the component package name has to be exactly ",
+                     "'$package' - please verify this inside $mod_fn) ",
+                     '(note 2: $EC has to be declared in "our (...)")');
         return undef;
     }
 
     my $component;
-    eval("\$component=NCM::Component::$mod->new(\$name, \$self)");
+    eval("\$component=$package->new(\$name, \$self)");
     if ($@) {
         $self->error("component $mod instantiation statement fails: $@");
         return undef;

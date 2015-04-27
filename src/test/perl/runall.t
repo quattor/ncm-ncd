@@ -11,6 +11,18 @@ use CAF::Object;
 
 $CAF::Object::NoAction = 1;
 
+BEGIN {
+    our $this_app = CAF::Application->new('app');
+    $this_app->{CONFIG}->define("state");
+    $this_app->{CONFIG}->define("autodeps");
+    $this_app->{CONFIG}->define("noaction");
+    $this_app->{CONFIG}->set('noaction', 1);
+    $this_app->{CONFIG}->define("template-path");
+    $this_app->{CONFIG}->set('template-path', "doesnotexist");
+    $this_app->{CONFIG}->define("nodeps");
+    $this_app->{CONFIG}->set('nodeps', 0);
+}
+
 my $mockcomponent = Test::MockModule->new("NCD::ComponentProxy");
 my $mocklist = Test::MockModule->new("NCD::ComponentProxyList");
 
@@ -70,10 +82,6 @@ Tests for the C<NCD::ComponentProxyList::run_all_components> method.
 
 =cut
 
-
-our $this_app = CAF::Application->new('app');
-$this_app->{CONFIG}->define("nodeps");
-$this_app->{CONFIG}->set('nodeps', 0);
 
 my $err = {};
 my $cfg = get_config_for_profile('runall-comps');
