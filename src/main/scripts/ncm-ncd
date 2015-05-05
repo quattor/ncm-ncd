@@ -125,7 +125,7 @@ sub app_options()
         },
 
         {
-            NAME    => 'autodeps',
+            NAME    => 'autodeps=1',
             HELP    => 'expand missing pre/post dependencies in configure',
             DEFAULT => 1
         },
