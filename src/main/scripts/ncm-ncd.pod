@@ -7,7 +7,7 @@ package ncm-ncd;
 ncm-ncd - Node Configuration Dispatcher
       of the NCM (Node Configuration Management) subsystem
 
-      quattor toolsuite http://cern.ch/quattor
+      quattor toolsuite http://quattor.org
 
 =head1 SYNOPSIS
 
@@ -107,11 +107,29 @@ use separate (per component) log files in log directory
 
 =item --nodeps
 
-ignore broken (pre/post) dependencies when invoking configure
+ignore broken dependencies when invoking configure.
+
+missing pre and/or post dependencies are ignored during resolution;
+and during the ordered execution of all components, failing
+predependencies are not considered broken and allow the execution
+of the component.
+
+=item --nodepsnoerrors
+
+errors from dependencies are downgraded to warnings, to make the
+overall ncm-ncd run not fail if a dependency fails. This option implies
+'--nodeps' and '--autodeps'.
+
+A "dependency" here is any component that is not requested/specified
+ via command line (and added to list of components to process via
+'--autodeps', if any).
+
+(If you do not care about dependencies and just want to avoid errors,
+you can also try to use '--nodeps --autodeps=0').
 
 =item --autodeps
 
-expand missing pre/post dependencies in configure
+expand missing pre/post dependencies in configure (default to true).
 
 =item --allowbrokencomps
 
