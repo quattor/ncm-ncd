@@ -11,6 +11,8 @@ use parent qw(CAF::ReporterMany CAF::Object);
 use NCD::ComponentProxy;
 use JSON::XS;
 use CAF::Process;
+use CAF::FileWriter;
+use File::Path qw(mkpath);
 
 our $this_app;
 
@@ -236,35 +238,42 @@ sub set_state
 {
     my ($self, $comp, $msg) = @_;
     if ($this_app->option('noaction')) {
-        if (!$msg) {
-            $self->info("would mark state of component as needing to run");
-        } else {
-            $self->info("would mark state of component as '$msg'");
-        }
+        $msg = "needing to run" if (!$msg);
+        $self->info("would mark state of component $comp as '$msg' (noaction set)");
         return;
     }
+
     my $file = $self->get_statefile($comp);
     if ($file) {
-        if (open(TOUCH, ">$file")) {
-            print TOUCH "$msg\n";
-            close(TOUCH);
+        $self->verbose("set_state for component $comp $file (msg $msg)");
+        my $fh = CAF::FileWriter->new($file, log => $self);
+        if ($fh) {
+            print $fh "$msg\n";
+            # calling close here will not update timestamp in case of same state
+            # so the timestamp will be of first failure with this message, not the last
+            # TODO: ok or not?
+            my $changed = $fh->close() ? "" : "not";
+            $self->verbose("state for component $comp $file $changed changed.");
         } else {
-            $self->warn("failed to write state file $file: $!");
+            $self->warn("failed to write state for component $comp file $file: $!");
         }
     }
 }
 
 # Mark a component as succeeded within our state directory
+# by removing the statefile
 sub clear_state
 {
     my ($self, $comp) = @_;
     if ($this_app->option('noaction')) {
-        $self->info("would mark state of component as success");
+        $self->info("would mark state of component $comp as success (noaction set)");
         return;
     }
+
     my $file = $self->get_statefile($comp);
     if ($file) {
-        unlink($file) or $self->warn("failed to clean state $file: $!");
+        $self->verbose("mark state of component $comp as success, removing statefile $file");
+        unlink($file) or $self->warn("failed to clean state of component $comp $file: $!");
     }
 }
 
