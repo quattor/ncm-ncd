@@ -423,7 +423,10 @@ sub _sortComponents
             return undef;
         }
     }
-    my @sortedcompProxyList = map {$comps{$_}} @$sorted;
+
+    # $sorted can contain components from the dependency resolution in $after
+    # that have no proxy (due to e.g. autodeps=0)
+    my @sortedcompProxyList = grep {defined($_)} map {$comps{$_}} @$sorted;
     return \@sortedcompProxyList;
 }
 
@@ -530,16 +533,20 @@ sub missing_deps
 
     my ($ret, @deps);
     my $autodeps = $this_app->option("autodeps");
+    my $nodeps = $this_app->option("nodeps");
 
     foreach my $pp (@pre, @post) {
         if (!exists($comps->{$pp})) {
-            if (!$autodeps) {
+            if ($autodeps) {
+                push(@deps, $pp);
+            } elsif ($nodeps) {
+                $self->verbose("Not satifying dependency $pp; continuing (nodeps set)");
+            } else {
                 $ec->ignore_error();
                 $self->warn("Not satifying dependency $pp");
                 return;
             }
-            push(@deps, $pp);
-        }
+         }
     }
     return (@deps);
 }
