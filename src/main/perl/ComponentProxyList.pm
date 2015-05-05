@@ -120,14 +120,34 @@ sub run_all_components
 
     my (%failed_components);
 
+    # nodeps should be implied by the nodepsnoerrors option
+    # allow it here explicitly as part of the API
+    my $nodepsnoerrors_global = $nodeps && $this_app->option('nodepsnoerrors');
+
     foreach my $comp (@{$components}) {
         $self->report();
         my $name = $comp->name();
         $self->info("running component: $name");
         $self->report('---------------------------------------------------------');
         my @broken_dep = ();
+
+        # Any component not in NAMES is a pre/post dependency
+        # This covers the case where a component in NAMES is a pre/post dependency of another component
+        # TODO: what with --all : are all components requested?
+        my $is_requested = (grep {$_ eq $name} @{$self->{NAMES}}) ? 1 : 0;
+        $self->verbose("$name is ", ($is_requested ? "" : "not")," a requested compoment");
+
+        # if nodepsnoerrors, errors for this component are not global errors, but become warnings
+        my $nodepsnoerrors = $nodepsnoerrors_global && (! $is_requested);
+        $self->verbose("nodepsnoerrors set for $name (errors will downgraded to warnings)")
+            if $nodepsnoerrors;
+
+        # TODO should we remove the requested components?
+        #     a failing requested component is not a the same as a failing dependency
+        #     (even if the requested component is a dependency of
+        #      some other (requested or not) component)
         foreach my $predep (@{$comp->getPreDependencies()}) {
-            if (!$nodeps && exists($status->{ERR_COMPS}->{$predep})) {
+            if (!$nodeps && $status->{ERR_COMPS}->{$predep}) {
                 push(@broken_dep, $predep);
                 $self->debug(1, "predependencies broken for component $name: $predep");
             }
@@ -148,25 +168,36 @@ sub run_all_components
             $self->set_state($name, "");
 
             my $ret = $comp->executeConfigure();
-            if (!defined($ret)) {
-                my $err = "cannot execute configure on component " . $name;
+            if (defined($ret)) {
+                # errors before warnings (errors can be downgraded to warnings)
+                if ($ret->{'ERRORS'}) {
+                     if ($nodepsnoerrors) {
+                         # Convert errors in warnings
+                         # TODO do we set the state to failed?
+                         $self->warn("Errors from $name are downgraded to warnings (nodepsnoerrors is set). ",
+                                     "State is not cleared (as something went wrong), but also not set.");
+                         $ret->{'WARNINGS'} += $ret->{'ERRORS'};
+                    } else {
+                        $status->{ERR_COMPS}->{$name} = $ret->{ERRORS};
+                        $self->set_state($name, $ret->{ERRORS});
+
+                        $status->{'ERRORS'} += $ret->{'ERRORS'};
+                    }
+                } else {
+                    $self->clear_state($name);
+                }
+
+                if ($ret->{'WARNINGS'}) {
+                    $status->{WARN_COMPS}->{$name} = $ret->{WARNINGS};
+
+                    $status->{'WARNINGS'} += $ret->{'WARNINGS'};
+                }
+            } else {
+                my $err = "cannot execute configure on component $name";
                 $self->error($err);
                 $status->{'ERRORS'}++;
                 $status->{ERR_COMPS}->{$name} = 1;
                 $self->set_state($name, $err);
-            } else {
-                if ($ret->{'ERRORS'}) {
-                    $status->{ERR_COMPS}->{$name} = $ret->{ERRORS};
-                    $self->set_state($name, $ret->{ERRORS});
-                } else {
-                    $self->clear_state($name);
-                }
-                if ($ret->{'WARNINGS'}) {
-                    $status->{WARN_COMPS}->{$name} = $ret->{WARNINGS};
-                }
-
-                $status->{'ERRORS'}   += $ret->{'ERRORS'};
-                $status->{'WARNINGS'} += $ret->{'WARNINGS'};
             }
         }
     }
