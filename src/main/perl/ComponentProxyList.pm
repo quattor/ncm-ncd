@@ -214,21 +214,27 @@ sub executeConfigComponents
 sub get_statefile
 {
     my ($self, $comp) = @_;
-    if ($this_app->option('state')) {
+    my $statedir = $this_app->option('state');
+    if ($statedir) {
+        # remove trailing slashes
+        $statedir = s/\/+$//;
 
         # the state directory could be volative
-        mkdir($this_app->option('state')) unless -d $this_app->option('state');
-        my $file = $this_app->option('state') . '/' . $comp;
+        mkpath($statedir) unless -d $statedir;
+
+        my $file = "$statedir/$comp";
         if ($file =~ m{^(\/[^\|<>&]*)$}) {
 
             # Must be an absolute path, no shell metacharacters
             return $1;
         } else {
-            $self->warn("state filename $file is inappropriate");
+            $self->warn("state component $comp filename $file is inappropriate");
 
             # Don't touch the state file
             return undef;
         }
+    } else {
+        $self->debug(2, "No state directory via state option set");
     }
     return undef;
 }
@@ -508,6 +514,7 @@ sub missing_deps
 }
 
 # Given hash C<comps>, return list of component proxies
+# Does a recursive walk through all dependencies
 sub get_proxies
 {
     my ($self, $comps) = @_;
@@ -524,9 +531,11 @@ sub get_proxies
         }
 
         my (@deps) = $self->missing_deps($px, $comps);
+        # This makes the loop recursive
+        # Check on the existsence, not the value
+        push(@c, grep(!exists($comps->{$_}), @deps));
 
         push(@pxs, $px);
-        push(@c, grep(!exists($comps->{$_}), @deps));
         $comps->{$_} = 1 foreach @deps;
     }
 
@@ -556,7 +565,7 @@ sub _getComponents
             if ($all_comps{$name}) {
                 $comps{$name} = 1;
             } else {
-                # will fail because ComponentProxy instance 
+                # will fail because ComponentProxy instance
                 # can only be created with active component
                 my $msg = "Inactive";
 
