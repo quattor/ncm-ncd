@@ -23,6 +23,13 @@ BEGIN {
     $this_app->{CONFIG}->set('nodeps', 0);
 }
 
+use Readonly;
+
+Readonly::Hash my %INIT_GLOBAL_STATUS => {
+                                          'ERRORS'   => 0,
+                                          'WARNINGS' => 0
+                                         };
+
 my $mockcomponent = Test::MockModule->new("NCD::ComponentProxy");
 my $mocklist = Test::MockModule->new("NCD::ComponentProxyList");
 
@@ -83,7 +90,9 @@ Tests for the C<NCD::ComponentProxyList::run_all_components> method.
 =cut
 
 
-my $err = {};
+# Initial global status
+my $err = {%INIT_GLOBAL_STATUS};
+
 my $cfg = get_config_for_profile('runall-comps');
 
 my @cmp = (NCD::ComponentProxy->new('acomponent', $cfg),
@@ -111,7 +120,7 @@ is(scalar(keys(%{$err->{WARN_COMPS}})), 1,
 
 =cut
 
-$err = {};
+$err = {%INIT_GLOBAL_STATUS};
 $cl->{CLIST} = \@cmp;
 
 $cl->run_all_components($cl->{CLIST}, 0, $err);
@@ -128,7 +137,7 @@ is(scalar(keys(%{$err->{WARN_COMPS}})), 2,
 
 =cut
 
-$err = {};
+$err = {%INIT_GLOBAL_STATUS};
 $cl->run_all_components($cl->{CLIST}, 1, $err);
 is($err->{ERRORS}, 0, "No errors when nodeps and all dependencies satisfied");
 is($err->{WARNINGS}, 15, "Warnings correctly aggregated with nodeps");
@@ -147,7 +156,7 @@ is($err->{WARNINGS}, 15, "Warnings correctly aggregated with nodeps");
 
 $mockcomponent->mock("executeConfigure", \&long_failed_configure);
 
-$err = {};
+$err = {%INIT_GLOBAL_STATUS};
 
 $cl->run_all_components([$cmp[0]], 0, $err);
 is($err->{ERRORS}, 1, "All failed components are detected");
@@ -160,14 +169,14 @@ is(scalar(keys(%{$err->{ERR_COMPS}})), 1,
 
 =cut
 
-$err = {};
+$err = {%INIT_GLOBAL_STATUS};
 
 $mockcomponent->mock("executeConfigure", \&execute_dependency_failed);
 
 $cl->run_all_components(\@cmp, 0, $err);
 is($err->{ERRORS}, 2, "Errors reported when pre-dependencies fail");
 
-$err = {};
+$err = {%INIT_GLOBAL_STATUS};
 
 $mockcomponent->mock("executeConfigure", \&execute_failed_nodeps);
 
