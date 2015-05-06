@@ -109,7 +109,7 @@ use separate (per component) log files in log directory
 
 ignore broken dependencies when invoking configure.
 
-missing pre and/or post dependencies are ignored during resolution;
+missing pre/post dependencies are ignored during resolution;
 and during the ordered execution of all components, failing
 predependencies are not considered broken and allow the execution
 of the component.
@@ -120,16 +120,17 @@ errors from dependencies are downgraded to warnings, to make the
 overall ncm-ncd run not fail if a dependency fails. This option implies
 '--nodeps' and '--autodeps'.
 
-A "dependency" here is any component that is not requested/specified
+A "dependency" is any component that is not requested/specified
  via command line (and added to list of components to process via
 '--autodeps', if any).
 
 (If you do not care about dependencies and just want to avoid errors,
-you can also try to use '--nodeps --autodeps=0').
+you can also try to use '--nodeps --no-autodeps').
 
 =item --autodeps
 
-expand missing pre/post dependencies in configure (default to true).
+Expand missing pre/post dependencies in configure (default to true).
+(Disable with --no-autodeps.)
 
 =item --allowbrokencomps
 

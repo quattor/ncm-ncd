@@ -425,7 +425,7 @@ sub _sortComponents
     }
 
     # $sorted can contain components from the dependency resolution in $after
-    # that have no proxy (due to e.g. autodeps=0)
+    # that have no proxy (due to e.g. --no-autodeps)
     my @sortedcompProxyList = grep {defined($_)} map {$comps{$_}} @$sorted;
     return \@sortedcompProxyList;
 }
