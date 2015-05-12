@@ -7,6 +7,7 @@
 package NCD::ComponentProxy;
 
 use strict;
+use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 
 use parent qw(CAF::ReporterMany CAF::Object);

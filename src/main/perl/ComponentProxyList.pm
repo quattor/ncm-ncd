@@ -6,6 +6,8 @@
 package NCD::ComponentProxyList;
 
 use strict;
+use warnings;
+
 use LC::Exception qw (SUCCESS throw_error);
 use parent qw(CAF::ReporterMany CAF::Object);
 use NCD::ComponentProxy;
@@ -63,6 +65,7 @@ sub reportComponents
 }
 
 # Run the pre-config $hook, possibly timing out after $timeout seconds
+# Returns 1 on success, 0 on failure
 sub pre_config_actions
 {
     my ($self, $hook, $timeout, $comps) = @_;
@@ -88,6 +91,7 @@ sub pre_config_actions
 # The $report argument is the summary of errors and warnings, that
 # will be serialized to JSON and passed to the hook as its standard
 # input.
+# Returns 1 on success, 0 on failure
 sub post_config_actions
 {
     my ($self, $hook, $timeout, $report) = @_;
@@ -481,7 +485,9 @@ sub get_all_components
     return %components;
 }
 
-# parse the --skip commandline option as comma-separated array of components to skip
+# parse the --skip commandline option as comma-separated 
+# array of components to skip. Returns array reference of components
+# to skip (empty list if none)
 sub _parse_skip_args
 {
     my ($skiptxt) = @_;
@@ -496,7 +502,8 @@ sub _parse_skip_args
 }
 
 # given hash reference to all components C<comps>, C<skip_components>
-# filters out all componets that are in the SKIP list.
+# filters out all componets that are in the SKIP list 
+# (i.e. C<$comps> is modidified).
 # Returns a hash with keys all components in the SKIP list and values
 # whether or not they were skipped (not skipped if not present in C<$comps>).
 sub skip_components
@@ -551,15 +558,17 @@ sub missing_deps
     return (@deps);
 }
 
-# Given hash C<comps>, return list of component proxies
-# Does a recursive walk through all dependencies
+# Given hash ref C<comps>, return list of component proxies 
+# and add missig_deps with state 1 to the C<comps> hashref
+# (i.e. the hashref is modified).
+# Does a recursive walk through all dependencies.
 sub get_proxies
 {
     my ($self, $comps) = @_;
 
     my @pxs;
 
-    my @c = keys(%$comps);
+    my @c = sort keys(%$comps);
 
     foreach my $comp (@c) {
         my $px = NCD::ComponentProxy->new($comp, $self->{CCM_CONFIG});
@@ -590,7 +599,7 @@ sub get_proxies
 # _getComponents(): boolean
 # instantiates the list of components specified in new().
 # If the list is empty, instantiates all active components.
-#
+# Returns SUCCESS on success, undef on failure.
 
 sub _getComponents
 {
