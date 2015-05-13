@@ -553,6 +553,12 @@ sub skip_components
     return %to_skip;
 }
 
+# Given hashref C<comps> with components (active or inactive),
+# return the list of pre- and/or post-dependencies for
+# proxy instance C<proxy> not part of C<comps>
+# if autodeps option is set. If the autodeps option is false, either
+# log the missing component with nodeps option set
+# or log a warning and return undef with nodeps also false.
 sub missing_deps
 {
     my ($self, $proxy, $comps) = @_;

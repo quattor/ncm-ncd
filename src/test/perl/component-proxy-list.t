@@ -87,7 +87,7 @@ is_deeply($skip, [], "Empty list of componets to skip returned");
 
 =head1
 
-get_all_components
+get_all_components / get_component_list
 
 =cut
 
@@ -101,6 +101,16 @@ is_deeply(\%comps, {
     'ff' => 0,
     'gg' => 1,
           }, "All components and their active status");
+
+my %actcomps = $cpl->get_component_list();
+is_deeply(\%actcomps, {
+    'aa' => 1,
+    'bb' => 1,
+    'cc' => 1,
+    'dd' => 1,
+    'ee' => 1,
+    'gg' => 1,
+          }, "All active components and their active status");
 
 =head1
 
@@ -312,5 +322,59 @@ is_deeply(\@unlinked, [$absstatefile],
 
 # reset noaction
 $this_app->{CONFIG}->set('noaction', 1);
+
+=head1
+
+missing_deps
+
+=cut
+
+# 'bb' has pre on 'aa' and post on 'cc' and 'dd'
+my $knowncomps = {
+    'aa' => 0, # even if inactive, aa is not 'missing'
+    'cc' => 1,
+};
+
+$WARN=0;
+$ERROR=0;
+
+my $bb_px = $pxs[0];
+is($bb_px->name(), 'bb', "testing with the bb component proxy instance");
+
+# autodeps=1 / nodeps=0 (nodeps doesn't matter with autodeps on)
+$this_app->{CONFIG}->set('autodeps', 1);
+$this_app->{CONFIG}->set('nodeps', 0);
+
+my @missingcomps = $cpl->missing_deps($bb_px, $knowncomps);
+is_deeply(\@missingcomps, ['dd'], "Found expected missing deps from bb with autodeps=1 / nodeps=0");
+
+# autodeps=0 / nodeps=1 (nodeps causes verbose logging, no warn)
+$this_app->{CONFIG}->set('autodeps', 1);
+$this_app->{CONFIG}->set('nodeps', 0);
+is($WARN, 0, "No warnings with autodeps=1");
+is($ERROR, 0, "No errors with autodeps=1");
+
+$this_app->{CONFIG}->set('autodeps', 0);
+$this_app->{CONFIG}->set('nodeps', 1);
+
+@missingcomps = $cpl->missing_deps($bb_px, $knowncomps);
+is_deeply(\@missingcomps, [], "No missing deps from bb with autodeps=0 / nodeps=1");
+is($WARN, 0, "No warnings with autodeps=0 / nodeps=1");
+is($ERROR, 0, "No errors with autodeps=0 / nodeps=1");
+
+$this_app->{CONFIG}->set('nodeps', 0);
+@missingcomps = $cpl->missing_deps($bb_px, $knowncomps);
+is_deeply(\@missingcomps, [], "No missing deps from bb with autodeps=0 / nodeps=0");
+is($WARN, 1, "One warning for 1 missing dep with autodeps=0 / nodeps=0");
+is($ERROR, 0, "No errors with autodeps=0 / nodeps=0");
+
+
+# TODO
+# run_all_components
+# executeConfigComponents
+# executeUnconfigComponent
+# _topoSort
+# _sortComponents
+# _getComponents
 
 done_testing();
