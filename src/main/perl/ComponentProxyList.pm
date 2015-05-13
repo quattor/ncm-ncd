@@ -207,7 +207,7 @@ sub run_all_components
     }
 }
 
-# Executes all the components listed in $self, finding (and adding)
+# Executes all the components listed in $self->{CLIST}, finding (and adding)
 # their pre and post-dependencies, in the correct order.  It will also
 # execute the $pre_hook with an optional $pre_timeout and the
 # $post_hook with a $post_timeout.
@@ -246,19 +246,22 @@ sub executeConfigComponents
     return $global_status;
 }
 
+# Return the statefile filename for component C<comp> in the
+# statedir (set via state option). Return undef in case of problem.
 sub get_statefile
 {
     my ($self, $comp) = @_;
     my $statedir = $this_app->option('state');
     if ($statedir) {
         # remove trailing slashes
-        $statedir = s/\/+$//;
-
-        # the state directory could be volative
-        mkpath($statedir) unless -d $statedir;
+        $statedir =~ s/\/+$//;
 
         my $file = "$statedir/$comp";
         if ($file =~ m{^(\/[^\|<>&]*)$}) {
+
+            # the state directory could be volatile
+            # only create after sanity/taint check
+            mkpath($statedir) unless -d $statedir;
 
             # Must be an absolute path, no shell metacharacters
             return $1;
@@ -269,12 +272,13 @@ sub get_statefile
             return undef;
         }
     } else {
-        $self->debug(2, "No state directory via state option set");
+        $self->debug(2, "No state directory via state option set for component $comp");
     }
     return undef;
 }
 
 # Mark a component as failed within our state directory
+# (returns undef with noaction option, 1 otherwise)
 sub set_state
 {
     my ($self, $comp, $msg) = @_;
@@ -288,21 +292,34 @@ sub set_state
     if ($file) {
         $self->verbose("set_state for component $comp $file (msg $msg)");
         my $fh = CAF::FileWriter->new($file, log => $self);
-        if ($fh) {
+        my $err = $ec->error();
+        if(defined($err)) {
+            $self->warn("failed to write state for component $comp file $file: ".$err->reason());
+        } else {
             print $fh "$msg\n";
             # calling close here will not update timestamp in case of same state
             # so the timestamp will be of first failure with this message, not the last
             # TODO: ok or not?
             my $changed = $fh->close() ? "" : "not";
             $self->verbose("state for component $comp $file $changed changed.");
-        } else {
-            $self->warn("failed to write state for component $comp file $file: $!");
         }
+    } else {
+        $self->debug(2, "No statefile to set for component $comp (msg: $msg)");
     }
+    return 1;
+}
+
+# Private wrapper around unlink for easy mocking in unittest
+# (it's not possible to redefine via CORE as it used in the test framework itself)
+sub _unlink
+{
+    my ($self, $file) = @_;
+    return unlink($file);
 }
 
 # Mark a component as succeeded within our state directory
 # by removing the statefile
+# (returns undef with noaction option, 1 otherwise)
 sub clear_state
 {
     my ($self, $comp) = @_;
@@ -314,8 +331,12 @@ sub clear_state
     my $file = $self->get_statefile($comp);
     if ($file) {
         $self->verbose("mark state of component $comp as success, removing statefile $file");
-        unlink($file) or $self->warn("failed to clean state of component $comp $file: $!");
+        $self->_unlink($file) or $self->warn("failed to clean state of component $comp $file: $!");
+    } else {
+        $self->debug(2, "No statefile to clear for component $comp");
     }
+
+    return 1;
 }
 
 sub executeUnconfigComponent
@@ -434,7 +455,8 @@ sub _sortComponents
     return \@sortedcompProxyList;
 }
 
-# Returns a hash with all the Perl modules be executed.
+# Returns a hash with all active components
+# (and these will the Perl modules to execute).
 sub get_component_list
 {
     my ($self) = @_;
@@ -485,7 +507,7 @@ sub get_all_components
     return %components;
 }
 
-# parse the --skip commandline option as comma-separated 
+# parse the --skip commandline option as comma-separated
 # array of components to skip. Returns array reference of components
 # to skip (empty list if none)
 sub _parse_skip_args
@@ -502,7 +524,7 @@ sub _parse_skip_args
 }
 
 # given hash reference to all components C<comps>, C<skip_components>
-# filters out all componets that are in the SKIP list 
+# filters out all componets that are in the SKIP list
 # (i.e. C<$comps> is modidified).
 # Returns a hash with keys all components in the SKIP list and values
 # whether or not they were skipped (not skipped if not present in C<$comps>).
@@ -558,7 +580,7 @@ sub missing_deps
     return (@deps);
 }
 
-# Given hash ref C<comps>, return list of component proxies 
+# Given hash ref C<comps>, return list of component proxies
 # and add missig_deps with state 1 to the C<comps> hashref
 # (i.e. the hashref is modified).
 # Does a recursive walk through all dependencies.
