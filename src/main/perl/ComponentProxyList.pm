@@ -246,6 +246,44 @@ sub executeConfigComponents
     return $global_status;
 }
 
+sub executeUnconfigComponent
+{
+    my $self = shift;
+
+    my $nr_instances = scalar @{$self->{'CLIST'}};
+
+    my %global_status = (
+        'ERRORS'   => 0,
+        'WARNINGS' => 0
+    );
+
+    if ($nr_instances == 0) {
+        $self->error('could not instantiate component');
+        $global_status{'ERRORS'}++;
+    } else {
+        my $comp = @{$self->{'CLIST'}}[0];
+        my $name = $comp->name();
+        # TODO increase global_status ERRORS ?
+        $self->error("Only one component can be unconfigured at a time; ",
+                     "taking the first one $name from proxy instance list ",
+                     "($nr_instances instances)")
+            if $nr_instances > 1;
+
+        my $ret = $comp->executeUnconfigure();
+        unless (defined $ret) {
+            $self->error("cannot execute unconfigure on component $name");
+            $global_status{'ERRORS'}++;
+        } else {
+            $self->report("unconfigure on component $name executed, ",
+                          $ret->{'ERRORS'}, ' errors, ',
+                          $ret->{'WARNINGS'}, ' warnings');
+            $global_status{'ERRORS'}   += $ret->{'ERRORS'};
+            $global_status{'WARNINGS'} += $ret->{'WARNINGS'};
+        }
+    }
+    return \%global_status;
+}
+
 # Return the statefile filename for component C<comp> in the
 # statedir (set via state option). Return undef in case of problem.
 sub get_statefile
@@ -339,39 +377,6 @@ sub clear_state
     return 1;
 }
 
-sub executeUnconfigComponent
-{
-    my $self = shift;
-
-    my $comp = @{$self->{'CLIST'}}[0];
-
-    my %global_status = (
-        'ERRORS'   => 0,
-        'WARNINGS' => 0
-    );
-
-    unless (defined $comp) {
-        $self->error('could not instantiate component');
-        $global_status{'ERRORS'}++;
-    } else {
-        my $ret = $comp->executeUnconfigure();
-        unless (defined $ret) {
-            $self->error('cannot execute unconfigure on component ' . $comp->name());
-            $global_status{'ERRORS'}++;
-        } else {
-            $self->report('unconfigure on component '
-                    . $comp->name()
-                    . ' executed, '
-                    . $ret->{'ERRORS'}
-                    . ' errors, '
-                    . $ret->{'WARNINGS'}
-                    . ' warnings');
-            $global_status{'ERRORS'}   += $ret->{'ERRORS'};
-            $global_status{'WARNINGS'} += $ret->{'WARNINGS'};
-        }
-    }
-    return \%global_status;
-}
 
 # protected methods
 
