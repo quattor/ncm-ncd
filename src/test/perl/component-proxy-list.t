@@ -564,9 +564,7 @@ foreach my $c (sort keys(%$topoafter)) {
 }
 ok($toposortfail, "toposort detected loop and returned false");
 
-# TODO
-# run_all_components
-# executeConfigComponents
-# executeUnconfigComponent
+# run_all_components tested in runall.t
+# executeConfigComponents / executeUnconfigComponent are tested in execute-config-components
 
 done_testing();
