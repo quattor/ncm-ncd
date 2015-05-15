@@ -45,6 +45,18 @@ $mock->mock('error', sub (@) {
     diag("ERROR ", join('', @_));
 });
 
+
+$mock->mock('debug', sub (@) {
+    my $self= shift;
+    diag("DEBUG ", join('', @_));
+});
+
+
+$mock->mock('verbose', sub (@) {
+    my $self= shift;
+    diag("VERBOSE ", join('', @_));
+});
+
 my @unlinked;
 $mock->mock('_unlink', sub {
     my ($self, $file) = @_;
@@ -349,24 +361,137 @@ my @missingcomps = $cpl->missing_deps($bb_px, $knowncomps);
 is_deeply(\@missingcomps, ['dd'], "Found expected missing deps from bb with autodeps=1 / nodeps=0");
 
 # autodeps=0 / nodeps=1 (nodeps causes verbose logging, no warn)
-$this_app->{CONFIG}->set('autodeps', 1);
-$this_app->{CONFIG}->set('nodeps', 0);
 is($WARN, 0, "No warnings with autodeps=1");
 is($ERROR, 0, "No errors with autodeps=1");
 
 $this_app->{CONFIG}->set('autodeps', 0);
 $this_app->{CONFIG}->set('nodeps', 1);
 
+my $res = $cpl->missing_deps($bb_px, $knowncomps);
+ok(defined($res), "missing_deps returns defined for autodeps=0 / nodeps=1");
+# just to check for array context
 @missingcomps = $cpl->missing_deps($bb_px, $knowncomps);
 is_deeply(\@missingcomps, [], "No missing deps from bb with autodeps=0 / nodeps=1");
+# no errors/warnings with nodeps=1
 is($WARN, 0, "No warnings with autodeps=0 / nodeps=1");
 is($ERROR, 0, "No errors with autodeps=0 / nodeps=1");
 
 $this_app->{CONFIG}->set('nodeps', 0);
-@missingcomps = $cpl->missing_deps($bb_px, $knowncomps);
-is_deeply(\@missingcomps, [], "No missing deps from bb with autodeps=0 / nodeps=0");
+$res = $cpl->missing_deps($bb_px, $knowncomps);
+ok(! defined($res), "missing_deps returns undef for autodeps=0 / nodeps=0");
 is($WARN, 1, "One warning for 1 missing dep with autodeps=0 / nodeps=0");
 is($ERROR, 0, "No errors with autodeps=0 / nodeps=0");
+# just to check for array context
+@missingcomps = $cpl->missing_deps($bb_px, $knowncomps);
+is_deeply(\@missingcomps, [], "No missing deps from bb with autodeps=0 / nodeps=0");
+
+=head1
+
+Test _getComponents
+
+=cut
+
+$WARN=0;
+$ERROR=0;
+
+# autodeps=1 / nodeps=0 (nodeps doesn't matter with autodeps on)
+$this_app->{CONFIG}->set('autodeps', 1);
+$this_app->{CONFIG}->set('nodeps', 0);
+
+# skip nothing
+$cpl->{SKIP} = [];
+
+# empty names, try to get all active components
+$cpl->{NAMES} = [];
+ok($cpl->_getComponents(), "_getComponents returns success with all components");
+
+my $clist_comps;
+$clist_comps->{$_->name()}++ foreach @{$cpl->{CLIST}};
+%actcomps = $cpl->get_component_list();
+is_deeply($clist_comps, \%actcomps,
+          "Component proxy list is same as all active components");
+
+# try with bb and dd (who have sane dependencies on each other)
+$cpl->{NAMES} = ['bb', 'dd'];
+ok($cpl->_getComponents(), "_getComponents returns success with bb+dd");
+
+$clist_comps = {};
+$clist_comps->{$_->name()}++ foreach @{$cpl->{CLIST}};
+is_deeply($clist_comps, {
+    'bb' => 1,
+    'dd' => 1,
+    'aa' => 1, # pre dep of bb and dd
+    'cc' => 1, # post dep bb
+},
+          "Component proxy list is as expected for bb+dd.");
+
+# test SKIP
+
+$cpl->{SKIP} = ['aa', 'ee'];
+$cpl->{NAMES} = ['bb', 'dd', 'ee'];
+ok($cpl->_getComponents(), "_getComponents returns success with bb+dd and aa+ee skipped");
+$clist_comps = {};
+$clist_comps->{$_->name()}++ foreach @{$cpl->{CLIST}};
+# ee is actually filtered, dependency aa not
+is_deeply($clist_comps, {
+    'aa' => 1, # the skip filter is performed before the recursive dependency  resolution
+    'bb' => 1,
+    'dd' => 1,
+    'cc' => 1, # post dep bb
+},
+          "Component proxy list is as expected for bb+dd and aa+ee skipped.");
+
+
+is($WARN, 0, "No warnings with _getComponents");
+is($ERROR, 0, "No errors with _getComponents");
+
+# test error for
+# missing component
+$cpl->{CLIST} = undef;
+$cpl->{SKIP} = [];
+$cpl->{NAMES} = ['bb', 'dd', 'ee', 'xx'];
+ok(! defined($cpl->_getComponents()),
+   "_getComponents returns undef with missing component in selection list");
+ok(! defined($cpl->{CLIST}), "CLIST attribute is not updated with missing component");
+is($WARN, 0, "No warnings with _getComponents");
+is($ERROR, 1, "error logged with missing component with _getComponents");
+$ERROR=0;
+
+# inatcive component
+$cpl->{NAMES} = ['bb', 'dd', 'ee', 'ff'];
+ok(! defined($cpl->_getComponents()),
+   "_getComponents returns undef with inactive component in selection list");
+ok(! defined($cpl->{CLIST}), "CLIST attribute is not updated with inactive component");
+is($WARN, 0, "No warnings with _getComponents");
+is($ERROR, 1, "error logged with missing component with _getComponents");
+$ERROR=0;
+
+# no active components (mock get_component_list)
+$cpl->{NAMES} = [];
+$mock->mock('get_component_list', sub {return});
+
+ok(! defined($cpl->_getComponents()),
+   "_getComponents returns undef with 0 active components configured");
+ok(! defined($cpl->{CLIST}), "CLIST attribute is not updated with 0 active components configured");
+is($WARN, 0, "No warnings with _getComponents");
+is($ERROR, 1, "error logged with 0 active components configured with _getComponents");
+$ERROR=0;
+$mock->unmock('get_component_list');
+
+# skip so many components, no proxies are left (mock skip_components)
+$cpl->{SKIP} = ['aa']; # no skip_components if empty
+$mock->mock('skip_components', sub {
+    my ($self, $comps) = @_;
+    # empty the hashref, don't assign new one
+    delete $comps->{$_} foreach keys %$comps;
+});
+ok(! defined($cpl->_getComponents()),
+   "_getComponents returns undef with all active components skipped");
+ok(! defined($cpl->{CLIST}), "CLIST attribute is not updated with all active components skipped");
+is($WARN, 0, "No warnings with _getComponents");
+is($ERROR, 1, "error logged with all active components skipped with _getComponents");
+$ERROR=0;
+$mock->unmock('skip_components');
 
 
 # TODO
@@ -375,6 +500,5 @@ is($ERROR, 0, "No errors with autodeps=0 / nodeps=0");
 # executeUnconfigComponent
 # _topoSort
 # _sortComponents
-# _getComponents
 
 done_testing();

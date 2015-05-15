@@ -502,7 +502,8 @@ sub get_all_components
 
         $components{$cname} = $active;
     }
-    $self->verbose("Components in the profile: ", join(", ", keys(%components)));
+    $self->verbose("Components in the profile: ",
+                   join(", ", sort keys(%components)));
 
     return %components;
 }
@@ -563,33 +564,53 @@ sub missing_deps
 {
     my ($self, $proxy, $comps) = @_;
 
-    my @pre  = @{$proxy->getPreDependencies()};
-    my @post = @{$proxy->getPostDependencies()};
+    my $name = $proxy->name();
 
-    my ($ret, @deps);
-    my $autodeps = $this_app->option("autodeps");
-    my $nodeps = $this_app->option("nodeps");
+    my @pre  = sort @{$proxy->getPreDependencies()};
+    my @post = sort @{$proxy->getPostDependencies()};
+
+    my @deps;
+
+    # use '|| 0' to avoid undef
+    my $autodeps = $this_app->option("autodeps") || 0;
+    my $nodeps = $this_app->option("nodeps") || 0;
 
     foreach my $pp (@pre, @post) {
-        if (!exists($comps->{$pp})) {
-            if ($autodeps) {
-                push(@deps, $pp);
-            } elsif ($nodeps) {
-                $self->verbose("Not satifying dependency $pp; continuing (nodeps set)");
-            } else {
-                $ec->ignore_error();
-                $self->warn("Not satifying dependency $pp");
-                return;
-            }
-         }
+        push(@deps, $pp) if (!exists($comps->{$pp}));
     }
+
+    if(! @deps) {
+        $self->debug(1, "no missing_deps for component $name");
+        return @deps;
+    }
+
+
+    # Missing dependencies
+    my $deps_txt = join(",", @deps);
+    $self->debug(1, "missing_deps for component $name ",
+                 "(autodeps=$autodeps/nodeps=$nodeps): $deps_txt");
+    if(!$autodeps) {
+        if ($nodeps) {
+            # no warning here, nodeps=1
+            $self->verbose("Not satifying dependencies $deps_txt (nodeps=1/autodeps=0)");
+            # return empty list to distinguish from undef for unittesting
+            @deps = ();
+        } else {
+            $ec->ignore_error();
+            $self->warn("Not satifying dependencies $deps_txt");
+            return;
+        }
+    }
+
     return (@deps);
 }
 
 # Given hash ref C<comps>, return list of component proxies
-# and add missig_deps with state 1 to the C<comps> hashref
+# and add missing_deps with state 1 to the C<comps> hashref
 # (i.e. the hashref is modified).
 # Does a recursive walk through all dependencies.
+# Returns undef on (first) failure to create a ComponentProxy instance
+# of a component.
 sub get_proxies
 {
     my ($self, $comps) = @_;
@@ -597,7 +618,7 @@ sub get_proxies
     my @pxs;
 
     my @c = sort keys(%$comps);
-
+    $self->debug(3, "get_proxies for initial list ", join(',', @c));
     foreach my $comp (@c) {
         my $px = NCD::ComponentProxy->new($comp, $self->{CCM_CONFIG});
         if (!$px) {
@@ -606,15 +627,29 @@ sub get_proxies
         }
 
         my (@deps) = $self->missing_deps($px, $comps);
-        # This makes the loop recursive
-        # Check on the existsence, not the value
-        push(@c, grep(!exists($comps->{$_}), @deps));
+        if (@deps) {
+            $self->debug(2, "Component $comp has missing_deps ",
+                         join(',', @deps));
+
+
+            # Check on the existsence, not the value
+            # TODO: isn't this already done by missing deps (making this unnecessary)?
+            my @unknown_deps = grep(!exists($comps->{$_}), @deps);
+            if (@unknown_deps) {
+                $self->debug(2, "Component $comp has unknown missing_deps ",
+                             join(',', @unknown_deps));
+
+                # This makes the loop recursive
+                push(@c, @unknown_deps);
+                $self->debug(3, "get_proxies updated list ", join(',', @c));
+            }
+        }
 
         push(@pxs, $px);
         $comps->{$_} = 1 foreach @deps;
     }
 
-    my $msg = " for components " . join(',', keys(%$comps));
+    my $msg = "for components " . join(',', sort keys(%$comps));
     if (@pxs) {
         $self->verbose("Created ", scalar @pxs, " ComponentProxy instances $msg");
     } else {
@@ -623,12 +658,14 @@ sub get_proxies
     return @pxs;
 }
 
-#
 # _getComponents(): boolean
 # instantiates the list of components specified in new().
 # If the list is empty, instantiates all active components.
 # Returns SUCCESS on success, undef on failure.
-
+# CLIST attribute with list of component proxies is set.
+# Failures occur when any of the specified components in new()
+# is inactive or missing; if no active components exists or if
+# a ComponentProxy cannot be instantiated (via get_proxies).
 sub _getComponents
 {
     my ($self) = @_;
