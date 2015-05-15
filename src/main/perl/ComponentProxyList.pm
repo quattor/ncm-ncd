@@ -376,8 +376,6 @@ sub executeUnconfigComponent
 # protected methods
 
 # Topological sort (Aho, Hopcroft & Ullman)
-# preliminary mkxprof based version, to be replaced by a
-# qsort call in the next alpha release.
 #
 # Arguments
 #   C<v>: Current vertex
@@ -386,7 +384,6 @@ sub executeUnconfigComponent
 #   C<active>: Components on this path (to check for loops)
 #   C<stack>: Output stack
 #   C<depth>: Depth
-#
 sub _topoSort
 {
     my ($self, $v, $after, $visited, $active, $stack, $depth) = @_;
@@ -394,7 +391,7 @@ sub _topoSort
     return SUCCESS if ($visited->{$v});
 
     $visited->{$v} = $active->{$v} = $depth;
-    foreach my $n (keys(%{$after->{$v}})) {
+    foreach my $n (sort keys(%{$after->{$v}})) {
         if ($active->{$n}) {
             my @loop = sort {$active->{$a} <=> $active->{$b}} keys(%$active);
             $self->error("dependency ordering loop detected: ", join(' < ', (@loop, $n)));
@@ -407,39 +404,54 @@ sub _topoSort
     return SUCCESS;
 }
 
-#
 # sort the components according to dependencies
-#
+# returns an arrayref with the sorted proxyinstances
 sub _sortComponents
 {
     my ($self, $unsortedcompProxyList) = @_;
 
-    $self->verbose("sorting components according to dependencies...");
+    my $nodeps = $this_app->option('nodeps');
 
-    my %comps;
-    %comps = map {$_->name(), $_} @$unsortedcompProxyList;
+    my %comps = map {$_->name(), $_} @$unsortedcompProxyList;
+    $self->verbose("sorting unsorted components according to dependencies: ",
+                   join(",", sort keys %comps));
+
     my $after = {};
     foreach my $comp (@$unsortedcompProxyList) {
         my $name = $comp->name();
+
+        # add itself
         $after->{$name} ||= {};
-        my @pre  = @{$comp->getPreDependencies()};
-        my @post = @{$comp->getPostDependencies()};
-        foreach my $p (@pre) {
+
+        foreach my $p (@{$comp->getPreDependencies()}) {
+            my $msg = "pre-dependency $p for component $name";
             if (defined $comps{$p}) {
+                $self->debug(2, "Found existing $msg, run $name AFTER $p");
                 $after->{$p}->{$name} = 1;
-            } elsif (!$this_app->option('nodeps')) {
-                $self->error(qq{pre-requisite for component "$name" does not exist: $p});
+            } elsif (!$nodeps) {
+                $self->debug(2, "Found non-existing $msg, error (nodeps=$nodeps)");
+                $self->error("pre-requisite for component \"$name\" does not exist: $p");
                 return undef;
+            } else {
+                $self->debug(2, "Found non-existing $msg, continue (nodeps=$nodeps)");
             }
         }
-        foreach my $p (@post) {
-            if (!defined $comps{$p} && !$this_app->option('nodeps')) {
-                $self->error(qq{post-requisite for component "$name"  does not exist: $p});
+
+        foreach my $p (@{$comp->getPostDependencies()}) {
+            my $msg = "post-dependency $p for component $name";
+            if (!defined($comps{$p}) && (!$nodeps)) {
+                $self->debug(2, "Found non-existing $msg, error (nodeps=$nodeps)");
+                $self->error("post-requisite for component \"$name\"  does not exist: $p");
                 return undef;
+            } else {
+                # TODO: This has to be wrong, why is there no check if $comps{$p} is defined?
+                # This will happily add non-existing postdeps
+                $self->debug(2, "Adding $msg, not checking if it exists (nodeps=$nodeps)");
+                $after->{$name}->{$p} = 1;
             }
-            $after->{$name}->{$p} = 1;
         }
     }
+
     my $visited = {};
     my $sorted  = [()];
     foreach my $c (sort keys(%$after)) {
@@ -452,6 +464,8 @@ sub _sortComponents
     # $sorted can contain components from the dependency resolution in $after
     # that have no proxy (due to e.g. --no-autodeps)
     my @sortedcompProxyList = grep {defined($_)} map {$comps{$_}} @$sorted;
+    $self->verbose("returning sorted component proxy list ",
+                   join(",", map {$_->name()} @sortedcompProxyList) );
     return \@sortedcompProxyList;
 }
 

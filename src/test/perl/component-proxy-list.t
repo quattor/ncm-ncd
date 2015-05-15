@@ -493,12 +493,80 @@ is($ERROR, 1, "error logged with all active components skipped with _getComponen
 $ERROR=0;
 $mock->unmock('skip_components');
 
+=head1
+
+Test _sortComponents
+
+=cut
+
+# TODO: more tests of error conditions
+$cpl->{SKIP} = [];
+# no pre/post deps
+$cpl->{NAMES} = ['aa'];
+ok($cpl->_getComponents(), "_getComponents returns success with bb+dd");
+my $sorted = $cpl->_sortComponents($cpl->{CLIST});
+my @compnames = map {$_->name()} @$sorted;
+# the order of dd and cc is not relevant, but should be consistent
+is_deeply(\@compnames, ['aa'],
+          "Sorted component without deps as expected");
+
+
+
+$cpl->{SKIP} = [];
+$cpl->{NAMES} = ['bb', 'dd'];
+ok($cpl->_getComponents(), "_getComponents returns success with bb+dd");
+$sorted = $cpl->_sortComponents($cpl->{CLIST});
+@compnames = map {$_->name()} @$sorted;
+# the order of dd and cc is not relevant, but should be consistent
+is_deeply(\@compnames, ['aa', 'bb', 'dd', 'cc'],
+          "Sorted components as expected");
+
+
+
+=head1
+
+Test _topoSort
+
+=cut
+
+# TODO more tests of error conditions
+
+my $topoafter = {
+    'a' => { 'b' => 1},
+    'b' => { 'c' => 1},
+    'c' => { 'd' => 1},
+};
+my $topovisited = {};
+my $toposorted  = [()];
+foreach my $c (sort keys(%$topoafter)) {
+    # this is based on the sort init from _sortComponents
+    ok($cpl->_topoSort($c, $topoafter, $topovisited, {}, $toposorted, 1),
+       "No error on sort (iteration $c)");
+}
+is_deeply($toposorted, [qw(a b c d)], "correct sorted topo after");
+
+
+# make a loop
+$topoafter = {
+    'a' => { 'b' => 1},
+    'b' => { 'c' => 1},
+    'c' => { 'a' => 1},
+};
+$topovisited = {};
+$toposorted  = [()];
+my $toposortfail=0;
+foreach my $c (sort keys(%$topoafter)) {
+    # this is the sort init from _sortComponents
+    # this does not break the finite for loop
+    unless($cpl->_topoSort($c, $topoafter, $topovisited, {}, $toposorted, 1)) {
+        $toposortfail = 1;
+    };
+}
+ok($toposortfail, "toposort detected loop and returned false");
 
 # TODO
 # run_all_components
 # executeConfigComponents
 # executeUnconfigComponent
-# _topoSort
-# _sortComponents
 
 done_testing();
