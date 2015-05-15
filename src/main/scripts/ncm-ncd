@@ -119,6 +119,12 @@ sub app_options()
         },
 
         {
+            NAME    => 'nodepsnoerrors',
+            HELP    => 'errors from broken (pre/post) dependencies in configure are downgraded to warnings (implies --nodeps)',
+            DEFAULT => undef
+        },
+
+        {
             NAME    => 'skip:s',
             HELP    => 'skip one component (only to be used with --all)',
             DEFAULT => undef
@@ -456,6 +462,11 @@ if ($this_app->option('list')) {
 $this_app->verbose('checking for ncm-ncd locks...');
 unless ($this_app->option("ignorelock")) {
     $this_app->lock() or $this_app->finish(-1);
+}
+
+# nodepsnoerrors implies nodeps
+if($this_app->option('nodepsnoerrors')) {
+    $this_app->{CONFIG}->set('nodeps', 1);
 }
 
 my ($method, $msg);
