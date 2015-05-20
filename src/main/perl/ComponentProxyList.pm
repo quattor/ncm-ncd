@@ -126,7 +126,7 @@ sub run_all_components
 
     # nodeps should be implied by the nodepsnoerrors option
     # allow it here explicitly as part of the API
-    my $nodepsnoerrors_global = $nodeps && $this_app->option('nodepsnoerrors');
+    my $downgrade_dep_errors_global = $nodeps && $this_app->option('nodepsnoerrors');
 
     foreach my $comp (@{$components}) {
         $self->report();
@@ -141,15 +141,18 @@ sub run_all_components
         my $is_requested = (grep {$_ eq $name} @{$self->{NAMES}}) ? 1 : 0;
         $self->verbose("$name is ", ($is_requested ? "" : "not")," a requested compoment");
 
-        # if nodepsnoerrors, errors for this component are not global errors, but become warnings
-        my $nodepsnoerrors = $nodepsnoerrors_global && (! $is_requested);
-        $self->verbose("nodepsnoerrors set for $name (errors will downgraded to warnings)")
-            if $nodepsnoerrors;
+        # if downgrade_dep_errors, errors for this component are not global errors, but become warnings
+        # TODO only if this component is not a predependency of any of the requested components
+        my $downgrade_dep_errors = $downgrade_dep_errors_global && (! $is_requested);
+        $self->verbose("downgrade_dep_errors set for $name (errors will downgraded to warnings)")
+            if $downgrade_dep_errors;
 
         # TODO should we remove the requested components?
         #     a failing requested component is not a the same as a failing dependency
         #     (even if the requested component is a dependency of
         #      some other (requested or not) component)
+        #
+        # getPreDependencies is not recursive, but the error state is passed upwards
         foreach my $predep (@{$comp->getPreDependencies()}) {
             if (!$nodeps && $status->{ERR_COMPS}->{$predep}) {
                 push(@broken_dep, $predep);
@@ -175,10 +178,10 @@ sub run_all_components
             if (defined($ret)) {
                 # errors before warnings (errors can be downgraded to warnings)
                 if ($ret->{'ERRORS'}) {
-                     if ($nodepsnoerrors) {
+                     if ($downgrade_dep_errors) {
                          # Convert errors in warnings
                          # TODO do we set the state to failed?
-                         $self->warn("Errors from $name are downgraded to warnings (nodepsnoerrors is set). ",
+                         $self->warn("Errors from $name are downgraded to warnings (downgrade_dep_errors is set). ",
                                      "State is not cleared (as something went wrong), but also not set.");
                          $ret->{'WARNINGS'} += $ret->{'ERRORS'};
                     } else {
