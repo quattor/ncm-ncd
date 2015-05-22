@@ -333,15 +333,17 @@ sub set_state
     if ($file) {
         $self->verbose("set_state for component $comp $file (msg $msg)");
         my $fh = CAF::FileWriter->new($file, log => $self);
+        print $fh "$msg\n";
+        # calling close here will not update timestamp in case of same state
+        # so the timestamp will be of first failure with this message, not the last
+        # TODO: ok or not?
+        my $changed = $fh->close() ? "" : "not";
+
         my $err = $ec->error();
         if(defined($err)) {
+            $ec->ignore_error();
             $self->warn("failed to write state for component $comp file $file: ".$err->reason());
         } else {
-            print $fh "$msg\n";
-            # calling close here will not update timestamp in case of same state
-            # so the timestamp will be of first failure with this message, not the last
-            # TODO: ok or not?
-            my $changed = $fh->close() ? "" : "not";
             $self->verbose("state for component $comp $file $changed changed.");
         }
     } else {
