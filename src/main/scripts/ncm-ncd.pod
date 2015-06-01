@@ -155,10 +155,10 @@ and during the ordered execution of all components, failing
 predependencies are not considered broken and allow the execution
 of the component.
 
-=item --nodepsnoerrors
+=item --ignore-errors-from-dependencies
 
 errors from dependencies are downgraded to warnings, to make the
-overall ncm-ncd run not fail if a dependency fails. This option implies
+overall ncm-ncd run pass if a dependency fails. This option implies
 '--nodeps' and '--autodeps'. Use with care.
 
 A "dependency" is any component that is not requested/specified
@@ -171,7 +171,7 @@ you can also try to use '--nodeps --no-autodeps').
 =item --autodeps
 
 Expand missing pre/post dependencies in configure (default to true).
-(Disable with --no-autodeps. Use with care.)
+(Disable with --no-autodeps. Use --no-autodeps with care.)
 
 =item --allowbrokencomps
 

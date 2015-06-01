@@ -174,8 +174,8 @@ sub app_options()
         },
 
         {
-            NAME    => 'nodepsnoerrors',
-            HELP    => 'errors from broken (pre/post) dependencies in configure are downgraded to warnings (implies --nodeps --autodeps). Use with care.',
+            NAME    => 'ignore-errors-from-dependencies',
+            HELP    => 'errors from failing (pre/post) dependencies in configure are downgraded to warnings (implies --nodeps --autodeps). Use with care.',
             DEFAULT => undef
         },
 
@@ -465,8 +465,8 @@ unless ($this_app->option("ignorelock")) {
     $this_app->lock() or $this_app->finish(-1);
 }
 
-# nodepsnoerrors implies nodeps and autodeps
-if($this_app->option('nodepsnoerrors')) {
+# ignore-errors-from-dependencies implies nodeps and autodeps
+if($this_app->option('ignore-errors-from-dependencies')) {
     $this_app->{CONFIG}->set('nodeps', 1);
     $this_app->{CONFIG}->set('autodeps', 1);
 }

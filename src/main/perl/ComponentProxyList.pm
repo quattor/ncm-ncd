@@ -124,9 +124,9 @@ sub run_all_components
 
     my (%failed_components);
 
-    # nodeps should be implied by the nodepsnoerrors option
+    # nodeps should be implied by the ignore-errors-from-dependencies option
     # allow it here explicitly as part of the API
-    my $downgrade_dep_errors_global = $nodeps && $this_app->option('nodepsnoerrors');
+    my $downgrade_dep_errors_global = $nodeps && $this_app->option('ignore-errors-from-dependencies');
 
     foreach my $comp (@{$components}) {
         $self->report();
@@ -148,7 +148,7 @@ sub run_all_components
             if $downgrade_dep_errors;
 
         # TODO should we remove the requested components?
-        #     a failing requested component is not a the same as a failing dependency
+        #     a failing requested component is not the same as a failing dependency
         #     (even if the requested component is a dependency of
         #      some other (requested or not) component)
         #

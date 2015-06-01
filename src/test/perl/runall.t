@@ -210,9 +210,9 @@ is($err->{WARNINGS}, 5, "Warnings are summed up");
 is($err->{ERRORS}, 4, "All components get executed with --nodeps");
 is($configure, 2, "$configure components configured");
 
-# nodepsnoerrors errors of failed comp are converted in warnings
-$this_app->{CONFIG}->define("nodepsnoerrors");
-$this_app->{CONFIG}->set('nodepsnoerrors', 1);
+# ignore-errors-from-dependencies errors of failed comp are converted in warnings
+$this_app->{CONFIG}->define("ignore-errors-from-dependencies");
+$this_app->{CONFIG}->set('ignore-errors-from-dependencies', 1);
 
 $err = {%INIT_GLOBAL_STATUS};
 $configure = 0;
