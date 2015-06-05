@@ -129,6 +129,16 @@ A value of 0 means no time out.  By default they time out after 5 minutes.
 Chroot to the directory given as an argument.  If it's not possible to
 chroot, C<ncm-ncd> will die.
 
+=item --check-noquattor
+
+Check if CCM updates are disabled globally via the /etc/noquattor file.
+And do not run if CCM updates are globally disabled.
+(If --check-noquattor is not set, ncm-ncd will ignore /etc/noquattor).
+
+=item --force-quattor
+
+Run even if CCM updates are globally disabled (and --check-noquattor is set).
+
 =back
 
 =head2 Advanced Options

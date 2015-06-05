@@ -17,6 +17,7 @@ use warnings;
 use parent qw(CAF::Application CAF::Reporter);
 use LC::Exception qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
+use EDG::WP4::CCM::Fetch qw(NOQUATTOR_FORCE);
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 
 #
@@ -154,6 +155,18 @@ sub app_options()
             NAME    => "chroot=s",
             HELP    => "Chroot to the the directory given as an argument",
             DEFAULT => undef
+        },
+
+        {
+            NAME    => 'check-noquattor',
+            DEFAULT => 0,
+            HELP    => 'Do not run if CCM updates are globally disabled',
+        },
+
+        {
+            NAME    => NOQUATTOR_FORCE,
+            DEFAULT => 0,
+            HELP    => 'Run even if CCM updates are globally disabled (and --check-noquattor is set)',
         },
 
         # Advanced options
@@ -309,6 +322,8 @@ package main;
 
 use strict;
 use LC::Exception qw (SUCCESS throw_error);
+use CAF::FileReader;
+use EDG::WP4::CCM::Fetch qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
 use NCD::ComponentProxyList;
 use vars qw($this_app %SIG);
 
@@ -388,6 +403,18 @@ unless ($this_app = 'ncd'->new($0, @ARGV)) {
     die("cannot start application");
     exit(1);
 }
+
+# Do not run if the file is present and check-noquattor is set
+if ($this_app->option('check-noquattor') &&
+    -f NOQUATTOR && ! $this_app->option(NOQUATTOR_FORCE)) {
+    $this_app->warn("ncm-ncd: not doing anything with ",
+                    "check-noquattor set and ",
+                    "CCM updates disabled globally (", NOQUATTOR, " present)");
+    my $fh = CAF::FileReader->new(NOQUATTOR);
+    $this_app->warn("$fh") if $fh;
+    exit(NOQUATTOR_EXITCODE);
+}
+
 
 # ensure allowed to run
 if ($>) {
@@ -498,7 +525,7 @@ if ($this_app->option('unconfigure')) {
 
 # remove duplicates and sort
 my @component_names = sort(keys( %{ {map {$_ => 1} @ARGV} } ));
-$this_app->verbose("Sorted unique components ", join(',', @component_names), 
+$this_app->verbose("Sorted unique components ", join(',', @component_names),
                    " from commandline ", join(',', @ARGV));
 
 unless ($this_app->option('all') || scalar(@component_names)) {
