@@ -7,6 +7,7 @@
 package NCD::ComponentProxy;
 
 use strict;
+use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 
 use parent qw(CAF::ReporterMany CAF::Object);
@@ -336,7 +337,7 @@ sub _setDependencies {
             push (@{$self->{'PRE_DEPS'}},$el->getStringValue());
         }
         $self->debug(2, "pre dependencies for component $self->{'NAME'}: ",
-                     ' '.join(',',@{$self->{PRE_DEPS}}));
+                     join(',',@{$self->{PRE_DEPS}}));
     } else {
         $ec->ignore_error();
         $self->debug(1, "no pre dependencies found for $self->{NAME}");
@@ -349,7 +350,7 @@ sub _setDependencies {
             push (@{$self->{'POST_DEPS'}},$el->getStringValue());
         }
         $self->debug(2, "post dependencies for component $self->{NAME}: ",
-                     ' '.join(',',@{$self->{POST_DEPS}}));
+                     join(',',@{$self->{POST_DEPS}}));
     } else {
         $ec->ignore_error();
         $self->debug(1, "no post dependencies found for $self->{NAME}");

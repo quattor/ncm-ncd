@@ -31,6 +31,12 @@ sub app_options()
         @array,
 
         {
+            NAME    => 'list',
+            HELP    => 'list existing components and exit',
+            DEFAULT => undef
+        },
+
+        {
             NAME    => 'configure',
             HELP    => 'run the configure method on the components',
             DEFAULT => undef
@@ -44,7 +50,7 @@ sub app_options()
 
         {
             NAME    => 'unconfigure',
-            HELP    => 'run the unconfigure method on the component',
+            HELP    => 'run the unconfigure method on the component (only one component at a time supported)',
             DEFAULT => undef
         },
 
@@ -97,48 +103,14 @@ sub app_options()
         },
 
         {
-            NAME => 'ignorelock',
-            HELP => 'ignore application lock. Use with care.'
-        },
-
-        {
-            NAME => 'forcelock',
-            HELP => 'take over application lock. Use with care.'
-        },
-
-        {
             NAME    => 'useprofile:s',
             HELP    => 'profile to use as configuration profile (optional, otherwise latest)',
             DEFAULT => undef
         },
 
         {
-            NAME    => 'nodeps',
-            HELP    => 'ignore broken (pre/post) dependencies in configure',
-            DEFAULT => undef
-        },
-
-        {
             NAME    => 'skip:s',
             HELP    => 'skip one component (only to be used with --all)',
-            DEFAULT => undef
-        },
-
-        {
-            NAME    => 'autodeps',
-            HELP    => 'expand missing pre/post dependencies in configure',
-            DEFAULT => 1
-        },
-
-        {
-            NAME    => 'allowbrokencomps',
-            HELP    => 'Do not stop overall execution if broken components are found',
-            DEFAULT => 1
-        },
-
-        {
-            NAME    => 'list',
-            HELP    => 'list existing components and exit',
             DEFAULT => undef
         },
 
@@ -182,6 +154,41 @@ sub app_options()
             NAME    => "chroot=s",
             HELP    => "Chroot to the the directory given as an argument",
             DEFAULT => undef
+        },
+
+        # Advanced options
+        {
+            NAME => 'ignorelock',
+            HELP => 'ignore application lock. Use with care.'
+        },
+
+        {
+            NAME => 'forcelock',
+            HELP => 'take over application lock. Use with care.'
+        },
+
+        {
+            NAME    => 'nodeps',
+            HELP    => 'ignore broken (pre/post) dependencies in configure. Use with care.',
+            DEFAULT => undef
+        },
+
+        {
+            NAME    => 'ignore-errors-from-dependencies',
+            HELP    => 'errors from failing (pre/post) dependencies in configure are downgraded to warnings (implies --nodeps --autodeps). Use with care.',
+            DEFAULT => undef
+        },
+
+        {
+            NAME    => 'autodeps!',
+            HELP    => 'expand missing pre/post dependencies in configure. Use with care.',
+            DEFAULT => 1
+        },
+
+        {
+            NAME    => 'allowbrokencomps',
+            HELP    => 'Do not stop overall execution if broken components are found. Use with care.',
+            DEFAULT => 1
         },
     );
 
@@ -456,6 +463,12 @@ if ($this_app->option('list')) {
 $this_app->verbose('checking for ncm-ncd locks...');
 unless ($this_app->option("ignorelock")) {
     $this_app->lock() or $this_app->finish(-1);
+}
+
+# ignore-errors-from-dependencies implies nodeps and autodeps
+if($this_app->option('ignore-errors-from-dependencies')) {
+    $this_app->{CONFIG}->set('nodeps', 1);
+    $this_app->{CONFIG}->set('autodeps', 1);
 }
 
 my ($method, $msg);

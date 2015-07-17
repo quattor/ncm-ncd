@@ -56,6 +56,17 @@ $mockcomponent->mock("executeConfigure", \&long_successful_configure);
 $mocklist->mock("pre_config_actions", 1);
 $mocklist->mock("post_config_actions", 1);
 
+$mocklist->mock('debug', sub (@) {
+    my $self= shift;
+    diag("DEBUG ", join('', @_));
+});
+
+
+$mocklist->mock('verbose', sub (@) {
+    my $self= shift;
+    diag("VERBOSE ", join('', @_));
+});
+
 =pod
 
 =head1 DESCRIPTION
@@ -78,13 +89,17 @@ my $cfg = get_config_for_profile('execute-config-components');
 
 
 my $cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent");
-
-#$cl->{CLIST} = [NCD::ComponentProxy->new('acomponent', $cfg)];
+my @clist = map {$_->name()} @{$cl->{CLIST}};
+is_deeply(\@clist, ['acomponent'],
+          "expected list of component proxies found");
+my $sorted = $cl->_sortComponents($cl->{CLIST});
+my @names = map {$_->name()} @$sorted;
+is_deeply(\@names, ['acomponent'], "Expected sorted components");
 
 my $err = $cl->executeConfigComponents();
 
 is($err->{ERRORS}, 0, "No errors reported");
-is($err->{WARNINGS}, 5, "No warnings reported");
+is($err->{WARNINGS}, 5, "5 warnings reported");
 is(scalar(keys(%{$err->{WARN_COMPS}})), 1,
    "Components with warnings are reported");
 

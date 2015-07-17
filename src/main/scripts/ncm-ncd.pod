@@ -7,7 +7,7 @@ package ncm-ncd;
 ncm-ncd - Node Configuration Dispatcher
       of the NCM (Node Configuration Management) subsystem
 
-      quattor toolsuite http://cern.ch/quattor
+      quattor toolsuite http://quattor.org
 
 =head1 SYNOPSIS
 
@@ -42,6 +42,12 @@ parameter.
 =head1 OPTIONS
 
 =over 4
+
+=item --list
+
+Does nothing but list all found components, in the following format:
+
+name - active? - installed?
 
 =item --configure
 
@@ -85,14 +91,6 @@ no state files will be maintained.
 
 wait a maximum of 'n' seconds between retries.
 
-=item --ignorelock
-
-Ignore existing application lock. Use with care.
-
-=item --forcelock
-
-Take over application lock. Use with care.
-
 =item --useprofile <profile_id>
 
 use <profile_id> as NVA-API configuration profile ID (default: latest)
@@ -104,25 +102,6 @@ CCM cache root directory (optional, otherwise CCM default taken)
 =item --multilog
 
 use separate (per component) log files in log directory
-
-=item --nodeps
-
-ignore broken (pre/post) dependencies when invoking configure
-
-=item --autodeps
-
-expand missing pre/post dependencies in configure
-
-=item --allowbrokencomps
-
-Do not stop overall execution if 'broken' components are found, just ignore
-these ('broken' components: component file missing or not instantiable)
-
-=item --list
-
-Does nothing but list all found components, in the following format:
-
-name - active? - installed?
 
 =item --pre-hook
 
@@ -149,6 +128,55 @@ A value of 0 means no time out.  By default they time out after 5 minutes.
 
 Chroot to the directory given as an argument.  If it's not possible to
 chroot, C<ncm-ncd> will die.
+
+=back
+
+=head2 Advanced Options
+
+Following options are advanced options (typically used for debugging and/or testing).
+Use with care.
+
+=over
+
+=item --ignorelock
+
+Ignore existing application lock. Use with care.
+
+=item --forcelock
+
+Take over application lock. Use with care.
+
+=item --nodeps
+
+ignore broken dependencies when invoking configure. Use with care.
+
+missing pre/post dependencies are ignored during resolution;
+and during the ordered execution of all components, failing
+predependencies are not considered broken and allow the execution
+of the component.
+
+=item --ignore-errors-from-dependencies
+
+errors from dependencies are downgraded to warnings, to make the
+overall ncm-ncd run pass if a dependency fails. This option implies
+'--nodeps' and '--autodeps'. Use with care.
+
+A "dependency" is any component that is not requested/specified
+ via command line (and added to list of components to process via
+'--autodeps', if any).
+
+(If you do not care about dependencies and just want to avoid errors,
+you can also try to use '--nodeps --no-autodeps').
+
+=item --autodeps
+
+Expand missing pre/post dependencies in configure (default to true).
+(Disable with --no-autodeps. Use --no-autodeps with care.)
+
+=item --allowbrokencomps
+
+Do not stop overall execution if 'broken' components are found, just ignore
+these ('broken' components: component file missing or not instantiable). Use with care.
 
 =back
 

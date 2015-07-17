@@ -6,11 +6,15 @@
 package NCD::ComponentProxyList;
 
 use strict;
+use warnings;
+
 use LC::Exception qw (SUCCESS throw_error);
 use parent qw(CAF::ReporterMany CAF::Object);
 use NCD::ComponentProxy;
 use JSON::XS;
 use CAF::Process;
+use CAF::FileWriter;
+use File::Path qw(mkpath);
 
 our $this_app;
 
@@ -61,6 +65,7 @@ sub reportComponents
 }
 
 # Run the pre-config $hook, possibly timing out after $timeout seconds
+# Returns 1 on success, 0 on failure
 sub pre_config_actions
 {
     my ($self, $hook, $timeout, $comps) = @_;
@@ -86,6 +91,7 @@ sub pre_config_actions
 # The $report argument is the summary of errors and warnings, that
 # will be serialized to JSON and passed to the hook as its standard
 # input.
+# Returns 1 on success, 0 on failure
 sub post_config_actions
 {
     my ($self, $hook, $timeout, $report) = @_;
@@ -118,14 +124,37 @@ sub run_all_components
 
     my (%failed_components);
 
+    # nodeps should be implied by the ignore-errors-from-dependencies option
+    # allow it here explicitly as part of the API
+    my $downgrade_dep_errors_global = $nodeps && $this_app->option('ignore-errors-from-dependencies');
+
     foreach my $comp (@{$components}) {
         $self->report();
         my $name = $comp->name();
         $self->info("running component: $name");
         $self->report('---------------------------------------------------------');
         my @broken_dep = ();
+
+        # Any component not in NAMES is a pre/post dependency
+        # This covers the case where a component in NAMES is a pre/post dependency of another component
+        # TODO: what with --all : are all components requested?
+        my $is_requested = (grep {$_ eq $name} @{$self->{NAMES}}) ? 1 : 0;
+        $self->verbose("$name is ", ($is_requested ? "" : "not")," a requested compoment");
+
+        # if downgrade_dep_errors, errors for this component are not global errors, but become warnings
+        # TODO only if this component is not a predependency of any of the requested components
+        my $downgrade_dep_errors = $downgrade_dep_errors_global && (! $is_requested);
+        $self->verbose("downgrade_dep_errors set for $name (errors will downgraded to warnings)")
+            if $downgrade_dep_errors;
+
+        # TODO should we remove the requested components?
+        #     a failing requested component is not the same as a failing dependency
+        #     (even if the requested component is a dependency of
+        #      some other (requested or not) component)
+        #
+        # getPreDependencies is not recursive, but the error state is passed upwards
         foreach my $predep (@{$comp->getPreDependencies()}) {
-            if (!$nodeps && exists($status->{ERR_COMPS}->{$predep})) {
+            if (!$nodeps && $status->{ERR_COMPS}->{$predep}) {
                 push(@broken_dep, $predep);
                 $self->debug(1, "predependencies broken for component $name: $predep");
             }
@@ -146,31 +175,42 @@ sub run_all_components
             $self->set_state($name, "");
 
             my $ret = $comp->executeConfigure();
-            if (!defined($ret)) {
-                my $err = "cannot execute configure on component " . $name;
+            if (defined($ret)) {
+                # errors before warnings (errors can be downgraded to warnings)
+                if ($ret->{'ERRORS'}) {
+                     if ($downgrade_dep_errors) {
+                         # Convert errors in warnings
+                         # TODO do we set the state to failed?
+                         $self->warn("Errors from $name are downgraded to warnings (downgrade_dep_errors is set). ",
+                                     "State is not cleared (as something went wrong), but also not set.");
+                         $ret->{'WARNINGS'} += $ret->{'ERRORS'};
+                    } else {
+                        $status->{ERR_COMPS}->{$name} = $ret->{ERRORS};
+                        $self->set_state($name, $ret->{ERRORS});
+
+                        $status->{'ERRORS'} += $ret->{'ERRORS'};
+                    }
+                } else {
+                    $self->clear_state($name);
+                }
+
+                if ($ret->{'WARNINGS'}) {
+                    $status->{WARN_COMPS}->{$name} = $ret->{WARNINGS};
+
+                    $status->{'WARNINGS'} += $ret->{'WARNINGS'};
+                }
+            } else {
+                my $err = "cannot execute configure on component $name";
                 $self->error($err);
                 $status->{'ERRORS'}++;
                 $status->{ERR_COMPS}->{$name} = 1;
                 $self->set_state($name, $err);
-            } else {
-                if ($ret->{'ERRORS'}) {
-                    $status->{ERR_COMPS}->{$name} = $ret->{ERRORS};
-                    $self->set_state($name, $ret->{ERRORS});
-                } else {
-                    $self->clear_state($name);
-                }
-                if ($ret->{'WARNINGS'}) {
-                    $status->{WARN_COMPS}->{$name} = $ret->{WARNINGS};
-                }
-
-                $status->{'ERRORS'}   += $ret->{'ERRORS'};
-                $status->{'WARNINGS'} += $ret->{'WARNINGS'};
             }
         }
     }
 }
 
-# Executes all the components listed in $self, finding (and adding)
+# Executes all the components listed in $self->{CLIST}, finding (and adding)
 # their pre and post-dependencies, in the correct order.  It will also
 # execute the $pre_hook with an optional $pre_timeout and the
 # $post_hook with a $post_timeout.
@@ -209,92 +249,37 @@ sub executeConfigComponents
     return $global_status;
 }
 
-sub get_statefile
-{
-    my ($self, $comp) = @_;
-    if ($this_app->option('state')) {
-
-        # the state directory could be volative
-        mkdir($this_app->option('state')) unless -d $this_app->option('state');
-        my $file = $this_app->option('state') . '/' . $comp;
-        if ($file =~ m{^(\/[^\|<>&]*)$}) {
-
-            # Must be an absolute path, no shell metacharacters
-            return $1;
-        } else {
-            $self->warn("state filename $file is inappropriate");
-
-            # Don't touch the state file
-            return undef;
-        }
-    }
-    return undef;
-}
-
-# Mark a component as failed within our state directory
-sub set_state
-{
-    my ($self, $comp, $msg) = @_;
-    if ($this_app->option('noaction')) {
-        if (!$msg) {
-            $self->info("would mark state of component as needing to run");
-        } else {
-            $self->info("would mark state of component as '$msg'");
-        }
-        return;
-    }
-    my $file = $self->get_statefile($comp);
-    if ($file) {
-        if (open(TOUCH, ">$file")) {
-            print TOUCH "$msg\n";
-            close(TOUCH);
-        } else {
-            $self->warn("failed to write state file $file: $!");
-        }
-    }
-}
-
-# Mark a component as succeeded within our state directory
-sub clear_state
-{
-    my ($self, $comp) = @_;
-    if ($this_app->option('noaction')) {
-        $self->info("would mark state of component as success");
-        return;
-    }
-    my $file = $self->get_statefile($comp);
-    if ($file) {
-        unlink($file) or $self->warn("failed to clean state $file: $!");
-    }
-}
-
 sub executeUnconfigComponent
 {
     my $self = shift;
 
-    my $comp = @{$self->{'CLIST'}}[0];
+    my $nr_instances = scalar @{$self->{'CLIST'}};
 
     my %global_status = (
         'ERRORS'   => 0,
         'WARNINGS' => 0
     );
 
-    unless (defined $comp) {
+    if ($nr_instances == 0) {
         $self->error('could not instantiate component');
         $global_status{'ERRORS'}++;
     } else {
+        my $comp = @{$self->{'CLIST'}}[0];
+        my $name = $comp->name();
+        # TODO increase global_status ERRORS ?
+        $self->error("Only one component can be unconfigured at a time; ",
+                     "taking the first one $name from proxy instance list ",
+                     "($nr_instances instances)")
+            if $nr_instances > 1;
+
         my $ret = $comp->executeUnconfigure();
         unless (defined $ret) {
-            $self->error('cannot execute unconfigure on component ' . $comp->name());
+            $self->error("cannot execute unconfigure on component $name");
             $global_status{'ERRORS'}++;
         } else {
-            $self->report('unconfigure on component '
-                    . $comp->name()
-                    . ' executed, '
-                    . $ret->{'ERRORS'}
-                    . ' errors, '
-                    . $ret->{'WARNINGS'}
-                    . ' warnings');
+            $self->report("unconfigure on component $name executed, ",
+                          $ret->{'ERRORS'}, ' errors, ',
+                          $ret->{'WARNINGS'}, ' warnings');
             $global_status{'ERRORS'}   += $ret->{'ERRORS'};
             $global_status{'WARNINGS'} += $ret->{'WARNINGS'};
         }
@@ -302,11 +287,105 @@ sub executeUnconfigComponent
     return \%global_status;
 }
 
+# Return the statefile filename for component C<comp> in the
+# statedir (set via state option). Return undef in case of problem.
+sub get_statefile
+{
+    my ($self, $comp) = @_;
+    my $statedir = $this_app->option('state');
+    if ($statedir) {
+        # remove trailing slashes
+        $statedir =~ s/\/+$//;
+
+        my $file = "$statedir/$comp";
+        if ($file =~ m{^(\/[^\|<>&]*)$}) {
+
+            # the state directory could be volatile
+            # only create after sanity/taint check
+            mkpath($statedir) unless -d $statedir;
+
+            # Must be an absolute path, no shell metacharacters
+            return $1;
+        } else {
+            $self->warn("state component $comp filename $file is inappropriate");
+
+            # Don't touch the state file
+            return undef;
+        }
+    } else {
+        $self->debug(2, "No state directory via state option set for component $comp");
+    }
+    return undef;
+}
+
+# Mark a component as failed within our state directory
+# (returns undef with noaction option, 1 otherwise)
+sub set_state
+{
+    my ($self, $comp, $msg) = @_;
+    if ($this_app->option('noaction')) {
+        $msg = "needing to run" if (!$msg);
+        $self->info("would mark state of component $comp as '$msg' (noaction set)");
+        return;
+    }
+
+    my $file = $self->get_statefile($comp);
+    if ($file) {
+        $self->verbose("set_state for component $comp $file (msg $msg)");
+        my $fh = CAF::FileWriter->new($file, log => $self);
+        print $fh "$msg\n";
+        # calling close here will not update timestamp in case of same state
+        # so the timestamp will be of first failure with this message, not the last
+        # TODO: ok or not?
+        my $changed = $fh->close() ? "" : "not";
+
+        my $err = $ec->error();
+        if(defined($err)) {
+            $ec->ignore_error();
+            $self->warn("failed to write state for component $comp file $file: ".$err->reason());
+        } else {
+            $self->verbose("state for component $comp $file $changed changed.");
+        }
+    } else {
+        $self->debug(2, "No statefile to set for component $comp (msg: $msg)");
+    }
+    return 1;
+}
+
+# Private wrapper around unlink for easy mocking in unittest
+# (it's not possible to redefine via CORE as it used in the test framework itself)
+sub _unlink
+{
+    my ($self, $file) = @_;
+    return unlink($file);
+}
+
+# Mark a component as succeeded within our state directory
+# by removing the statefile
+# (returns undef with noaction option, 1 otherwise)
+sub clear_state
+{
+    my ($self, $comp) = @_;
+    if ($this_app->option('noaction')) {
+        $self->info("would mark state of component $comp as success (noaction set)");
+        return;
+    }
+
+    my $file = $self->get_statefile($comp);
+    if ($file) {
+        $self->verbose("mark state of component $comp as success, removing statefile $file");
+        $self->_unlink($file) or $self->warn("failed to clean state of component $comp $file: $!");
+    } else {
+        $self->debug(2, "No statefile to clear for component $comp");
+    }
+
+    return 1;
+}
+
+
 # protected methods
 
 # Topological sort (Aho, Hopcroft & Ullman)
-# preliminary mkxprof based version, to be replaced by a
-# qsort call in the next alpha release.
 #
 # Arguments
 #   C<v>: Current vertex
@@ -315,7 +394,6 @@ sub executeUnconfigComponent
 #   C<active>: Components on this path (to check for loops)
 #   C<stack>: Output stack
 #   C<depth>: Depth
-#
 sub _topoSort
 {
     my ($self, $v, $after, $visited, $active, $stack, $depth) = @_;
@@ -323,7 +401,7 @@ sub _topoSort
     return SUCCESS if ($visited->{$v});
 
     $visited->{$v} = $active->{$v} = $depth;
-    foreach my $n (keys(%{$after->{$v}})) {
+    foreach my $n (sort keys(%{$after->{$v}})) {
         if ($active->{$n}) {
             my @loop = sort {$active->{$a} <=> $active->{$b}} keys(%$active);
             $self->error("dependency ordering loop detected: ", join(' < ', (@loop, $n)));
@@ -336,39 +414,54 @@ sub _topoSort
     return SUCCESS;
 }
 
-#
 # sort the components according to dependencies
-#
+# returns an arrayref with the sorted proxyinstances
 sub _sortComponents
 {
     my ($self, $unsortedcompProxyList) = @_;
 
-    $self->verbose("sorting components according to dependencies...");
+    my $nodeps = $this_app->option('nodeps');
 
-    my %comps;
-    %comps = map {$_->name(), $_} @$unsortedcompProxyList;
+    my %comps = map {$_->name(), $_} @$unsortedcompProxyList;
+    $self->verbose("sorting unsorted components according to dependencies: ",
+                   join(",", sort keys %comps));
+
     my $after = {};
     foreach my $comp (@$unsortedcompProxyList) {
         my $name = $comp->name();
+
+        # add itself
         $after->{$name} ||= {};
-        my @pre  = @{$comp->getPreDependencies()};
-        my @post = @{$comp->getPostDependencies()};
-        foreach my $p (@pre) {
+
+        foreach my $p (@{$comp->getPreDependencies()}) {
+            my $msg = "pre-dependency $p for component $name";
             if (defined $comps{$p}) {
+                $self->debug(2, "Found existing $msg, run $name AFTER $p");
                 $after->{$p}->{$name} = 1;
-            } elsif (!$this_app->option('nodeps')) {
-                $self->error(qq{pre-requisite for component "$name" does not exist: $p});
+            } elsif (!$nodeps) {
+                $self->debug(2, "Found non-existing $msg, error (nodeps=$nodeps)");
+                $self->error("pre-requisite for component \"$name\" does not exist: $p");
                 return undef;
+            } else {
+                $self->debug(2, "Found non-existing $msg, continue (nodeps=$nodeps)");
             }
         }
-        foreach my $p (@post) {
-            if (!defined $comps{$p} && !$this_app->option('nodeps')) {
-                $self->error(qq{post-requisite for component "$name"  does not exist: $p});
+
+        foreach my $p (@{$comp->getPostDependencies()}) {
+            my $msg = "post-dependency $p for component $name";
+            if (!defined($comps{$p}) && (!$nodeps)) {
+                $self->debug(2, "Found non-existing $msg, error (nodeps=$nodeps)");
+                $self->error("post-requisite for component \"$name\"  does not exist: $p");
                 return undef;
+            } else {
+                # TODO: This has to be wrong, why is there no check if $comps{$p} is defined?
+                # This will happily add non-existing postdeps
+                $self->debug(2, "Adding $msg, not checking if it exists (nodeps=$nodeps)");
+                $after->{$name}->{$p} = 1;
             }
-            $after->{$name}->{$p} = 1;
         }
     }
+
     my $visited = {};
     my $sorted  = [()];
     foreach my $c (sort keys(%$after)) {
@@ -377,11 +470,17 @@ sub _sortComponents
             return undef;
         }
     }
-    my @sortedcompProxyList = map {$comps{$_}} @$sorted;
+
+    # $sorted can contain components from the dependency resolution in $after
+    # that have no proxy (due to e.g. --no-autodeps)
+    my @sortedcompProxyList = grep {defined($_)} map {$comps{$_}} @$sorted;
+    $self->verbose("returning sorted component proxy list ",
+                   join(",", map {$_->name()} @sortedcompProxyList) );
     return \@sortedcompProxyList;
 }
 
-# Returns a hash with all the Perl modules be executed.
+# Returns a hash with all active components
+# (and these will the Perl modules to execute).
 sub get_component_list
 {
     my ($self) = @_;
@@ -427,12 +526,15 @@ sub get_all_components
 
         $components{$cname} = $active;
     }
-    $self->verbose("Components in the profile: ", join(", ", keys(%components)));
+    $self->verbose("Components in the profile: ",
+                   join(", ", sort keys(%components)));
 
     return %components;
 }
 
-# parse the --skip commandline option as comma-separated array of components to skip
+# parse the --skip commandline option as comma-separated
+# array of components to skip. Returns array reference of components
+# to skip (empty list if none)
 sub _parse_skip_args
 {
     my ($skiptxt) = @_;
@@ -447,7 +549,8 @@ sub _parse_skip_args
 }
 
 # given hash reference to all components C<comps>, C<skip_components>
-# filters out all componets that are in the SKIP list.
+# filters out all componets that are in the SKIP list
+# (i.e. C<$comps> is modidified).
 # Returns a hash with keys all components in the SKIP list and values
 # whether or not they were skipped (not skipped if not present in C<$comps>).
 sub skip_components
@@ -475,38 +578,71 @@ sub skip_components
     return %to_skip;
 }
 
+# Given hashref C<comps> with components (active or inactive),
+# return the list of pre- and/or post-dependencies for
+# proxy instance C<proxy> not part of C<comps>
+# if autodeps option is set. If the autodeps option is false, either
+# log the missing component with nodeps option set
+# or log a warning and return undef with nodeps also false.
 sub missing_deps
 {
     my ($self, $proxy, $comps) = @_;
 
-    my @pre  = @{$proxy->getPreDependencies()};
-    my @post = @{$proxy->getPostDependencies()};
+    my $name = $proxy->name();
 
-    my ($ret, @deps);
-    my $autodeps = $this_app->option("autodeps");
+    my @pre  = sort @{$proxy->getPreDependencies()};
+    my @post = sort @{$proxy->getPostDependencies()};
+
+    my @deps;
+
+    # use '|| 0' to avoid undef
+    my $autodeps = $this_app->option("autodeps") || 0;
+    my $nodeps = $this_app->option("nodeps") || 0;
 
     foreach my $pp (@pre, @post) {
-        if (!exists($comps->{$pp})) {
-            if (!$autodeps) {
-                $ec->ignore_error();
-                $self->warn("Not satifying dependency $pp");
-                return;
-            }
-            push(@deps, $pp);
+        push(@deps, $pp) if (!exists($comps->{$pp}));
+    }
+
+    if(! @deps) {
+        $self->debug(1, "no missing_deps for component $name");
+        return @deps;
+    }
+
+
+    # Missing dependencies
+    my $deps_txt = join(",", @deps);
+    $self->debug(1, "missing_deps for component $name ",
+                 "(autodeps=$autodeps/nodeps=$nodeps): $deps_txt");
+    if(!$autodeps) {
+        if ($nodeps) {
+            # no warning here, nodeps=1
+            $self->verbose("Not satifying dependencies $deps_txt (nodeps=1/autodeps=0)");
+            # return empty list to distinguish from undef for unittesting
+            @deps = ();
+        } else {
+            $ec->ignore_error();
+            $self->warn("Not satifying dependencies $deps_txt");
+            return;
         }
     }
+
     return (@deps);
 }
 
-# Given hash C<comps>, return list of component proxies
+# Given hash ref C<comps>, return list of component proxies
+# and add missing_deps with state 1 to the C<comps> hashref
+# (i.e. the hashref is modified).
+# Does a recursive walk through all dependencies.
+# Returns undef on (first) failure to create a ComponentProxy instance
+# of a component.
 sub get_proxies
 {
     my ($self, $comps) = @_;
 
     my @pxs;
 
-    my @c = keys(%$comps);
-
+    my @c = sort keys(%$comps);
+    $self->debug(3, "get_proxies for initial list ", join(',', @c));
     foreach my $comp (@c) {
         my $px = NCD::ComponentProxy->new($comp, $self->{CCM_CONFIG});
         if (!$px) {
@@ -515,13 +651,29 @@ sub get_proxies
         }
 
         my (@deps) = $self->missing_deps($px, $comps);
+        if (@deps) {
+            $self->debug(2, "Component $comp has missing_deps ",
+                         join(',', @deps));
+
+
+            # Check on the existsence, not the value
+            # TODO: isn't this already done by missing deps (making this unnecessary)?
+            my @unknown_deps = grep(!exists($comps->{$_}), @deps);
+            if (@unknown_deps) {
+                $self->debug(2, "Component $comp has unknown missing_deps ",
+                             join(',', @unknown_deps));
+
+                # This makes the loop recursive
+                push(@c, @unknown_deps);
+                $self->debug(3, "get_proxies updated list ", join(',', @c));
+            }
+        }
 
         push(@pxs, $px);
-        push(@c, grep(!exists($comps->{$_}), @deps));
         $comps->{$_} = 1 foreach @deps;
     }
 
-    my $msg = " for components " . join(',', keys(%$comps));
+    my $msg = "for components " . join(',', sort keys(%$comps));
     if (@pxs) {
         $self->verbose("Created ", scalar @pxs, " ComponentProxy instances $msg");
     } else {
@@ -530,12 +682,14 @@ sub get_proxies
     return @pxs;
 }
 
-#
 # _getComponents(): boolean
 # instantiates the list of components specified in new().
 # If the list is empty, instantiates all active components.
-#
-
+# Returns SUCCESS on success, undef on failure.
+# CLIST attribute with list of component proxies is set.
+# Failures occur when any of the specified components in new()
+# is inactive or missing; if no active components exists or if
+# a ComponentProxy cannot be instantiated (via get_proxies).
 sub _getComponents
 {
     my ($self) = @_;
@@ -547,7 +701,7 @@ sub _getComponents
             if ($all_comps{$name}) {
                 $comps{$name} = 1;
             } else {
-                # will fail because ComponentProxy instance 
+                # will fail because ComponentProxy instance
                 # can only be created with active component
                 my $msg = "Inactive";
 
