@@ -27,6 +27,7 @@ my $_COMP_PREFIX='/software/components';
 my $ec=LC::Exception::Context->new->will_store_all;
 
 use constant COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
+use constant COMPONENT_MANDATORY_METHOD => "Configure";
 
 =pod
 
@@ -302,6 +303,12 @@ sub _load {
         $self->error("component $mod instantiation statement fails: $@");
         return undef;
     }
+
+    if (! $component->can(COMPONENT_MANDATORY_METHOD)) {
+        $self->error("component $mod is missing the mandatory " . COMPONENT_MANDATORY_METHOD . " method");
+        return undef;
+    }
+
     return $component;
 }
 

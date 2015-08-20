@@ -175,5 +175,31 @@ is($error, 1, "error logged for brokennew");
 like($lasterror, qr{instantiation statement fails},
      "broken new error message");
 
+# noconfigure is missing a Configure method
+$error = 0;
+$cmp->{MODULE} = "noconfigure";
+ok($cmp->hasFile(), "noconfigure module found");
+
+$c = $cmp->_load();
+is($c, undef, "module with missing Configure method is not loaded");
+is($error, 1, "error logged for missingconfigure");
+like($lasterror, qr{missing the mandatory Configure method},
+     "missing configure error message");
+
+=pod
+
+=head2 Load component that does not inherit from C<NCM::Component>
+
+=cut
+
+$error = 0;
+$cmp->{MODULE} = "customcomponent";
+ok($cmp->hasFile(), "customcomponent module found");
+
+$c = $cmp->_load();
+isa_ok($c, "NCM::Component::customcomponent",
+       "customcomponent correctly instantiated");
+is($error, 0, "no error logged for customcomponent");
+
 
 done_testing();
