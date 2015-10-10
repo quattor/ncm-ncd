@@ -262,6 +262,40 @@ sub get_errors {
   return $self->{'ERRORS'};
 }
 
+=pod
+
+=item event
+
+Add an event to the history (if exists). Following metadata is added
+
+=over
+
+=item component
+
+The component name
+
+=item component_module
+
+The component module
+
+=back
+
+All other areguments are passed on unmodified.
+
+=cut
+
+sub event
+{
+    my ($self, $object, %metadata) = @_;
+
+    if ($self->{LOGGER}->can('event')) {
+        $metadata{component} = $self->name();
+        $metadata{component_module} = ref($self);
+        return $self->{LOGGER}->event($object, %metadata);
+    }
+
+    return SUCCESS;
+}
 
 =pod
 
