@@ -8,6 +8,7 @@ package NCM::Component;
 use strict;
 use LC::Exception qw (SUCCESS throw_error);
 use LC::Sysinfo;
+use CAF::History qw($IDX);
 use parent qw(Exporter CAF::Object);
 use Template;
 use Template::Stash;
@@ -288,14 +289,61 @@ sub event
 {
     my ($self, $object, %metadata) = @_;
 
-    if ($self->{LOGGER}->can('event')) {
-        $metadata{component} = $self->name();
-        $metadata{component_module} = ref($self);
-        return $self->{LOGGER}->event($object, %metadata);
+    return SUCCESS if (! $self->{LOGGER}->can('event'));
+
+    $metadata{component} = $self->name();
+    $metadata{component_module} = ref($self);
+
+    return $self->{LOGGER}->event($object, %metadata);
+}
+
+=item event_report
+
+Report any relevant events:
+
+=over
+
+=item events triggered by this component
+
+=item modified files
+
+=back
+
+Returns arrayref with reported event indices.
+
+=cut
+
+sub event_report
+{
+    my ($self) = @_;
+
+    return [] if (! $self->{LOGGER}->can('event'));
+
+    my $match = sub {
+        my $ev = shift;
+
+        # only return relevant events for this component
+        return if (($ev->{component} || '') ne $self->name());
+
+        # only return modified events
+        return if (! $ev->{modified});
+
+        # match!
+        return 1;
+    };
+
+    # Besides IDX, only filename metadata?
+    my $evs = $self->{LOGGER}->query_raw($match, [$IDX, 'filename']);
+
+    my @idxs;
+    foreach my $ev (@$evs) {
+        push(@idxs, $ev->{$IDX});
+        $self->info("EVENT: modified file $ev->{filename}");
     }
 
-    return SUCCESS;
+    return \@idxs;
 }
+
 
 =pod
 
