@@ -14,7 +14,7 @@ package ncd;
 
 use strict;
 use warnings;
-use parent qw(CAF::Application CAF::Reporter CAF::History);
+use parent qw(CAF::Application CAF::Reporter);
 use LC::Exception qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Fetch qw(NOQUATTOR_FORCE);
@@ -326,6 +326,7 @@ sub _initialize
     $self->set_report_logfile($self->{'LOG'});
 
     # start history event tracking
+    $self->{REPORTED_EVENTS} = [];
     $self->init_history($self->option("history-instances"))
         if $self->option("history");
 

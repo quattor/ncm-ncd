@@ -9,6 +9,7 @@ use strict;
 use LC::Exception qw (SUCCESS throw_error);
 use LC::Sysinfo;
 use CAF::History qw($IDX);
+use CAF::Reporter qw($HISTORY);
 use parent qw(Exporter CAF::Object);
 use Template;
 use Template::Stash;
@@ -281,7 +282,7 @@ The component module
 
 =back
 
-All other areguments are passed on unmodified.
+All other arguments are passed on unmodified.
 
 =cut
 
@@ -332,14 +333,17 @@ sub event_report
         return 1;
     };
 
-    # Besides IDX, only filename metadata?
-    my $evs = $self->{LOGGER}->query_raw($match, [$IDX, 'filename']);
+    # Besides IDX and component name, only filename metadata?
+    my $filter = [$IDX, 'filename', 'component'];
+    my $evs = $self->{LOGGER}->{$HISTORY}->query_raw($match, $filter);
 
     my @idxs;
     foreach my $ev (@$evs) {
         push(@idxs, $ev->{$IDX});
-        $self->info("EVENT: modified file $ev->{filename}");
+        $self->info("EVENT: $ev->{component} modified file $ev->{filename}");
     }
+
+    $self->verbose("No events to report") if (! @idxs);
 
     return \@idxs;
 }

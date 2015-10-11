@@ -3,14 +3,16 @@ use strict;
 use warnings;
 use Test::More;
 use LC::Exception;
-use apphistory;
+use CAF::History qw($EVENTS $REF);
+use CAF::Reporter qw($HISTORY);
+use CAF::Application;
 use CAF::FileWriter;
 use Test::MockModule;
 
 our $this_app;
 
 BEGIN {
-    $this_app = apphistory->new('app');
+    $this_app = CAF::Application->new('app');
     $this_app->{CONFIG}->define("noaction");
     $this_app->{CONFIG}->set('noaction', 1);
     $this_app->{CONFIG}->define("template-path");
@@ -81,12 +83,12 @@ $fh = CAF::FileWriter->new('target/test/some/file2', log => $cmp2);
 print $fh "woohoo2"; # different content
 $fh = undef;
 
-diag explain $this_app->{HISTORY}->{EVENTS};
+diag explain $this_app->{$HISTORY}->{$EVENTS};
 
 
-$closeev = $this_app->{HISTORY}->{EVENTS}->[3];
+$closeev = $this_app->{$HISTORY}->{$EVENTS}->[3];
 
-is($closeev->{REF}, 'CAF::FileWriter', 'event added by FileWriter by cmp2');
+is($closeev->{$REF}, 'CAF::FileWriter', 'event added by FileWriter by cmp2');
 is($closeev->{modified}, 1, 'event of modified FileWriter by cmp2');
 
 is($closeev->{component}, 'bar', 'Component name bar by cmp2');
@@ -97,7 +99,7 @@ is($closeev->{component_module}, 'NCM::Component', 'Component module by cmp2');
 @info_msgs = ();
 my $idx1 = $cmp->event_report();
 is_deeply(\@info_msgs,
-          ["EVENT: modified file target/test/some/file"],
+          ["EVENT: foo modified file target/test/some/file"],
           "cmp reports 1 modified file");
 is_deeply($idx1, [1], "reported indices by cmp");
 
@@ -106,8 +108,8 @@ my $idx2 = $cmp2->event_report();
 diag explain \@info_msgs;
 diag explain $idx2;
 is_deeply(\@info_msgs, [
-    "EVENT: modified file target/test/some/file",
-    "EVENT: modified file target/test/some/file2",
+    "EVENT: bar modified file target/test/some/file",
+    "EVENT: bar modified file target/test/some/file2",
 ], "cmp2 reports 1 modified file");
 is_deeply($idx2, [3, 5], "reported indices by cmp2");
 

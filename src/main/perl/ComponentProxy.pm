@@ -501,7 +501,21 @@ sub _execute {
             'WARNINGS'=>$component->get_warnings(),
             'ERRORS'=>$component->get_errors()
            };
+
+        # TODO: make event_report a mandatory method
+        if($component->can('event_report')) {
+            my $idxs = $component->event_report();
+            if (defined($idxs)) {
+                push(@{$this_app->{REPORTED_EVENTS}}, @$idxs);
+            } else {
+                $self->warn("Something went wrong with reporting events");
+            }
+        } else {
+            $self->verbose('Cannot report events.')
+        }
+
     }
+
     # restore logfile and noaction flags
     $self->set_report_logfile($this_app->{'LOG'})
             if ($this_app->option('multilog'));
