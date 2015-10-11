@@ -27,7 +27,10 @@ my $_COMP_PREFIX='/software/components';
 my $ec=LC::Exception::Context->new->will_store_all;
 
 use constant COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
-use constant COMPONENT_MANDATORY_METHOD => "Configure";
+# Methods called during _execute
+use constant COMPONENT_MANDATORY_METHODS => qw(Configure
+    error warn get_errors get_warnings name
+);
 
 =pod
 
@@ -80,7 +83,6 @@ sub executeUnconfigure {
     my $self=shift;
 
     return $self->_execute('Unconfigure');
-
 }
 
 
@@ -304,11 +306,12 @@ sub _load {
         return undef;
     }
 
-    if (! $component->can(COMPONENT_MANDATORY_METHOD)) {
-        $self->error("component $mod is missing the mandatory " . COMPONENT_MANDATORY_METHOD . " method");
-        return undef;
+    foreach my $mandatory_method (COMPONENT_MANDATORY_METHODS) {
+        if (! $component->can($mandatory_method)) {
+            $self->error("component $mod is missing the mandatory $mandatory_method method");
+            return undef;
+        }
     }
-
     return $component;
 }
 
