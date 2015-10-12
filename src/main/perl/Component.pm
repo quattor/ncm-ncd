@@ -318,7 +318,8 @@ sub event_report
 {
     my ($self) = @_;
 
-    return [] if (! $self->{LOGGER}->can('event'));
+    my $history = $self->{LOGGER}->{$HISTORY};
+    return [] if (! $history);
 
     my $match = sub {
         my $ev = shift;
@@ -335,7 +336,7 @@ sub event_report
 
     # Besides IDX and component name, only filename metadata?
     my $filter = [$IDX, 'filename', 'component'];
-    my $evs = $self->{LOGGER}->{$HISTORY}->query_raw($match, $filter);
+    my $evs = $history->query_raw($match, $filter);
 
     my @idxs;
     foreach my $ev (@$evs) {
