@@ -10,6 +10,7 @@ use strict;
 use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 
+use CAF::Reporter qw($HISTORY $LOGFILE);
 use parent qw(CAF::ReporterMany CAF::Object);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Path;
@@ -393,22 +394,23 @@ sub _execute {
 
     my $component=$self->_load();
     unless (defined $component) {
-        $self->error('cannot load component: '.$name);
+        $self->error("cannot load component: $name");
         return undef;
     }
 
     # redirect log file to component's log file
     if ($this_app->option('multilog')) {
-        my $logfile=$this_app->option("logdir").'/component-'.$name.'.log';
-        my $objlog=CAF::Log->new($logfile,'at');
-        unless (defined $objlog) {
-            $self->error('cannot open component log file: '.$logfile);
+        my $logfilename = $this_app->option("logdir")."/component-$name.log";
+        if (! $self->init_logfile($logfilename, 'at')) {
+            $self->error("cannot open component log file: $logfilename");
             return undef;
         }
-        $self->set_report_logfile($objlog);
     } else {
-        $self->set_report_logfile ($this_app->{LOG});
+        $self->set_report_logfile ($this_app->{$LOGFILE});
     }
+
+    # TODO: support multihistory? does that even make sense?
+    $self->set_report_history($this_app->{$HISTORY}) if $this_app->option('history');
 
     $self->log('-----------------------------------------------------------');
 

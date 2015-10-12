@@ -15,6 +15,7 @@ package ncd;
 use strict;
 use warnings;
 use parent qw(CAF::Application CAF::Reporter);
+use CAF::Reporter qw($LOGFILE);
 use LC::Exception qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Fetch qw(NOQUATTOR_FORCE);
@@ -319,11 +320,10 @@ sub _initialize
     }
 
     $self->{'NCD_LOGFILE'} = $self->option("logdir") . '/ncd.log';
-    $self->{'LOG'} = CAF::Log->new($self->{'NCD_LOGFILE'}, 'at');
-    return undef unless (defined $self->{'LOG'});
 
-    # start using log file
-    $self->set_report_logfile($self->{'LOG'});
+    return if(! $self->init_logfile($self->{'NCD_LOGFILE'}, 'at'));
+    # Legacy LOG attibute
+    $self->{'LOG'} = $self->{$LOGFILE};
 
     # start history event tracking
     $self->{REPORTED_EVENTS} = [];
