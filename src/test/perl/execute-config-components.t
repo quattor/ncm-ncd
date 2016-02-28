@@ -1,6 +1,13 @@
 # -*- mode: cperl -*-
 use strict;
 use warnings;
+
+BEGIN {
+    # Ignore the ncm namespace loaded by Test::Quattor
+    use Test::Quattor::Namespace;
+    $Test::Quattor::Namespace::ignore->{ncm} = 1;
+}
+
 use Test::More;
 use Test::Quattor qw(execute-config-components execute-config-deps);
 use NCD::ComponentProxyList;
