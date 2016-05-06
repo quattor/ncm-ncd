@@ -15,6 +15,7 @@ package ncd;
 use strict;
 use warnings;
 use parent qw(CAF::Application CAF::Reporter);
+use CAF::Reporter qw($LOGFILE);
 use LC::Exception qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Fetch qw(NOQUATTOR_FORCE);
@@ -169,6 +170,12 @@ sub app_options()
             HELP    => 'Run even if CCM updates are globally disabled (and --check-noquattor is set)',
         },
 
+        {
+            NAME    => 'history',
+            HELP    => 'Enable history/event tracking',
+            DEFAULT => 1
+        },
+
         # Advanced options
         {
             NAME => 'ignorelock',
@@ -203,6 +210,13 @@ sub app_options()
             HELP    => 'Do not stop overall execution if broken components are found. Use with care.',
             DEFAULT => 1
         },
+
+        {
+            NAME    => 'history-instances',
+            HELP    => 'Enable history/event instances tracking. Use with care.',
+            DEFAULT => 0
+        },
+
     );
 
     return \@array;
@@ -306,11 +320,16 @@ sub _initialize
     }
 
     $self->{'NCD_LOGFILE'} = $self->option("logdir") . '/ncd.log';
-    $self->{'LOG'} = CAF::Log->new($self->{'NCD_LOGFILE'}, 'at');
-    return undef unless (defined $self->{'LOG'});
 
-    # start using log file
-    $self->set_report_logfile($self->{'LOG'});
+    return if(! $self->init_logfile($self->{'NCD_LOGFILE'}, 'at'));
+    # Legacy LOG attibute
+    $self->{'LOG'} = $self->{$LOGFILE};
+
+    # start history event tracking
+    $self->{REPORTED_EVENTS} = [];
+    $self->init_history($self->option("history-instances"))
+        if $self->option("history");
+
     return SUCCESS;
 }
 

@@ -135,6 +135,10 @@ Check if CCM updates are disabled globally via the /etc/noquattor file.
 And do not run if CCM updates are globally disabled.
 (If --check-noquattor is not set, ncm-ncd will ignore /etc/noquattor).
 
+=item --history
+
+Enable history/event tracking. (Enabled by default).
+
 =item --force-quattor
 
 Run even if CCM updates are globally disabled (and --check-noquattor is set).
@@ -187,6 +191,10 @@ Expand missing pre/post dependencies in configure (default to true).
 
 Do not stop overall execution if 'broken' components are found, just ignore
 these ('broken' components: component file missing or not instantiable). Use with care.
+
+=item --history-instances
+
+Enable history/event instances tracking. Use with care.
 
 =back
 

@@ -10,6 +10,7 @@ use strict;
 use warnings;
 use LC::Exception qw (SUCCESS throw_error);
 
+use CAF::Reporter qw($HISTORY $LOGFILE);
 use parent qw(CAF::ReporterMany CAF::Object);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Path;
@@ -27,7 +28,10 @@ my $_COMP_PREFIX='/software/components';
 my $ec=LC::Exception::Context->new->will_store_all;
 
 use constant COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
-use constant COMPONENT_MANDATORY_METHOD => "Configure";
+# Methods called during _execute
+use constant COMPONENT_MANDATORY_METHODS => qw(Configure
+    error warn get_errors get_warnings name
+);
 
 =pod
 
@@ -80,7 +84,6 @@ sub executeUnconfigure {
     my $self=shift;
 
     return $self->_execute('Unconfigure');
-
 }
 
 
@@ -304,11 +307,12 @@ sub _load {
         return undef;
     }
 
-    if (! $component->can(COMPONENT_MANDATORY_METHOD)) {
-        $self->error("component $mod is missing the mandatory " . COMPONENT_MANDATORY_METHOD . " method");
-        return undef;
+    foreach my $mandatory_method (COMPONENT_MANDATORY_METHODS) {
+        if (! $component->can($mandatory_method)) {
+            $self->error("component $mod is missing the mandatory $mandatory_method method");
+            return undef;
+        }
     }
-
     return $component;
 }
 
@@ -390,22 +394,23 @@ sub _execute {
 
     my $component=$self->_load();
     unless (defined $component) {
-        $self->error('cannot load component: '.$name);
+        $self->error("cannot load component: $name");
         return undef;
     }
 
     # redirect log file to component's log file
     if ($this_app->option('multilog')) {
-        my $logfile=$this_app->option("logdir").'/component-'.$name.'.log';
-        my $objlog=CAF::Log->new($logfile,'at');
-        unless (defined $objlog) {
-            $self->error('cannot open component log file: '.$logfile);
+        my $logfilename = $this_app->option("logdir")."/component-$name.log";
+        if (! $self->init_logfile($logfilename, 'at')) {
+            $self->error("cannot open component log file: $logfilename");
             return undef;
         }
-        $self->set_report_logfile($objlog);
     } else {
-        $self->set_report_logfile ($this_app->{LOG});
+        $self->set_report_logfile ($this_app->{$LOGFILE});
     }
+
+    # TODO: support multihistory? does that even make sense?
+    $self->set_report_history($this_app->{$HISTORY}) if $this_app->option('history');
 
     $self->log('-----------------------------------------------------------');
 
@@ -498,7 +503,21 @@ sub _execute {
             'WARNINGS'=>$component->get_warnings(),
             'ERRORS'=>$component->get_errors()
            };
+
+        # TODO: make event_report a mandatory method
+        if($component->can('event_report')) {
+            my $idxs = $component->event_report();
+            if (defined($idxs)) {
+                push(@{$this_app->{REPORTED_EVENTS}}, @$idxs);
+            } else {
+                $self->warn("Something went wrong with reporting events");
+            }
+        } else {
+            $self->verbose('Cannot report events.')
+        }
+
     }
+
     # restore logfile and noaction flags
     $self->set_report_logfile($this_app->{'LOG'})
             if ($this_app->option('multilog'));
