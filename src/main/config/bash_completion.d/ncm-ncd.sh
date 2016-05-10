@@ -1,5 +1,3 @@
-#!/bin/bash
-#
 # ${license-info}
 # ${developer-info}
 # ${author-info}
@@ -18,8 +16,8 @@
 # component name.
 _ncm_ncd()
 {
-    local opts="--configure --verbose --debug --all --list --help"
-    local comps=`find /usr/lib/perl/NCM/Component -name '*.pm' -exec basename '{}' .pm ';'`
+    local opts="--all --allowbrokencomps --autodeps --cache_root --cfgfile --check-noquattor --chroot --configure --facility --forcelock --history --history-instances --ignore-errors-from-dependencies --ignorelock --include --list --logdir --multilog --noaction --nodeps --post-hook --post-hook-timeout --pre-hook --pre-hook-timeout --retries --skip --state --template-path --timeout --unconfigure --useprofile"
+    local comps=`find /usr/lib/perl/NCM/Component -maxdepth 1 -name '*.pm' -exec basename '{}' .pm ';'`
     COMPREPLY=()
     local cur="${COMP_WORDS[COMP_CWORD]}"
     case $cur in
