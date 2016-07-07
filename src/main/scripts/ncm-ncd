@@ -276,7 +276,7 @@ sub lock
 
     # /var/lock can be volatile
     mkdir('/var/lock/quattor');
-    $self->{LOCK} = CAF::Lock->new('/var/lock/quattor/ncm-ncd');
+    $self->{LOCK} = CAF::Lock->new('/var/lock/quattor/ncm-ncd', log => $self);
     my $lock_flag = FORCE_IF_STALE;
     $lock_flag = FORCE_ALWAYS if ($self->option("forcelock"));
     unless ($self->{LOCK}->set_lock($self->option("retries"), $self->option("timeout"), $lock_flag))
