@@ -11,8 +11,6 @@ use LC::Sysinfo;
 use CAF::History qw($IDX);
 use CAF::Reporter qw($HISTORY);
 use parent qw(Exporter CAF::Object);
-use Template;
-use Template::Stash;
 
 our ($this_app, @EXPORT, $NoAction, $SYSNAME, $SYSVERS);
 
@@ -448,15 +446,6 @@ sub _initialize {
   $self->{FILES} = [];
   $self->{LOGGER} = defined $logger ? $logger:$this_app;
   return SUCCESS;
-}
-
-$Template::Stash::PRIVATE = undef;
-my $template = Template->new(INCLUDE_PATH =>
-			     $this_app->option("template-path"));
-
-sub template
-{
-    return $template;
 }
 
 =pod
