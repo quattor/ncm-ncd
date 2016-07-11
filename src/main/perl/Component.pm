@@ -8,12 +8,11 @@ use parent qw(Exporter CAF::Object);
 
 our ($this_app, @EXPORT, $NoAction, $SYSNAME, $SYSVERS);
 
-
 *this_app = \$main::this_app;
 
 @EXPORT = qw($NoAction $SYSNAME $SYSVERS);
 
-$NoAction = $this_app->option('noaction');
+$NoAction = defined($this_app) ? $this_app->option('noaction') : 0;
 $CAF::Object::NoAction = $NoAction;
 
 $SYSNAME = LC::Sysinfo::os()->name;
