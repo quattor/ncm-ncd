@@ -33,150 +33,47 @@ NCM::Component - basic support functions for NCM components
 =head1 DESCRIPTION
 
 This class provides the neccessary support functions for components,
-which have to inherit from it. Some functions provide aliases, for
-enhanced LCFG backwards compatibility.
+which have to inherit from it.
 
 =head1 Public methods
 
-=over 4
+=over
 
-=item log(@array) or LogMessage(@array)
+=item warn
 
-write @array to component's logfile
+Report with loglevel 'WARN'. Increases the number of
+reported warnings in the C<WARNINGS> attribute by 1.
 
-=cut
-
-*LogMessage = *log;
-sub log
-{
-    my $self = shift;
-    $self->{LOGGER}->log(@_);
-}
-
-
-=pod
-
-=item report(@array) or Report(@array)
-
-write @array to component's logfile and stdout.
+(The ncd client will report the number of warnings reported by the component.)
 
 =cut
 
-*Report = *report;
-sub report
-{
-  my $self = shift;
-  $self->{LOGGER}->report(@_);
-}
-
-=pod
-
-=item info(@array) or Info(@array)
-
-same as 'report', but string prefixed by [INFO]
-
-=cut
-
-*Info = *info;
-sub info
-{
-    my $self = shift;
-    $self->{LOGGER}->info(@_);
-}
-
-=pod
-
-=item OK(@array)
-
-same as 'report', but string prefixed by [OK]
-
-=cut
-
-sub OK
-{
-  my $self = shift;
-  $self->{LOGGER}->OK(@_);
-}
-
-=pod
-
-=item verbose(@array) or Verbose(@array)
-
-as 'report' - only if verbose output is activated.
-
-=cut
-
-*Verbose = *verbose;
-sub verbose
-{
-    my $self = shift;
-    $self->{LOGGER}->verbose(@_);
-}
-
-=pod
-
-=item debug($int,@array) or Debug(@array)
-
-as 'report' - only if debug level $int is activated. If called as
-Debug(@array), the default debug level is set to 1.
-
-=cut
-
-sub debug
-{
-    my $self = shift;
-    $self->{LOGGER}->debug(@_);
-}
-
-sub Debug {
-    my $self = shift;
-    $self->{LOGGER}->debug(1,@_);
-}
-
-
-=pod
-
-=item warn(@array) or Warn(@array)
-
-as 'report', but @array prefixed by [WARN]. Increases the number of
-reported warnings by 1.
-
-The ncd will report the number of warnings reported by the component.
-
-=cut
-
-*Warn = *warn;
 sub warn
 {
     my $self = shift;
-    $self->{LOGGER}->warn(@_);
+    $self->SUPER::warn(@_);
     $self->{WARNINGS}++;
 }
 
-=pod
+=item error
 
-=item error(@array) or Error(@array)
+Report with loglevel 'ERROR'. Increases the number of
+reported errors in the C<ERRORS> attribute by 1.
 
-as 'report', but @array prefixed by [ERROR]. Increases the number of
-reported errors by 1. The component will therefore be flagged as
-failed, and no depending components will be executed.
-
-The ncd will report the number of errors reported by the component.
+(The ncd client will report the number of errors reported by the component.
+The component will therefore be flagged as
+failed, and no depending components will be executed.)
 
 =cut
 
-*Error = *error;
 sub error
 {
     my $self = shift;
-    $self->{LOGGER}->error(@_);
+    $self->SUPER::error(@_);
     $self->{ERRORS}++;
 }
 
-
-=pod
-
-=item name():string
+=item name
 
 Returns the component name
 
@@ -188,23 +85,20 @@ sub name
     return $self->{NAME};
 }
 
-=pod
+=item prefix
 
-=item prefix():string
-
-Returns the standard configuration path for the component.
+Returns the standard configuration path for the component
+C<</software/components/<name>>>.
 
 =cut
 
 sub prefix
 {
-  my ($self) = @_;
+    my ($self) = @_;
 
-  return "/software/components/$self->{NAME}";
+    return "/software/components/$self->{NAME}";
 }
 
-
-=pod
 
 =item unescape($string): $string
 
@@ -219,8 +113,6 @@ sub unescape
     $str =~ s!(_[0-9a-f]{2})!sprintf("%c",hex($1))!eg;
     return $str;
 }
-
-=pod
 
 =item escape($string): $string
 
@@ -237,8 +129,6 @@ sub escape
 }
 
 
-=pod
-
 =item get_warnings(): integer
 
 Returns the number of calls to 'warn' by the component.
@@ -252,8 +142,6 @@ sub get_warnings
     return $self->{WARNINGS};
 }
 
-=pod
-
 =item get_errors(): integer
 
 Returns the number of calls to 'error' by the component.
@@ -266,8 +154,6 @@ sub get_errors
 
     return $self->{ERRORS};
 }
-
-=pod
 
 =item event
 
@@ -293,12 +179,12 @@ sub event
 {
     my ($self, $object, %metadata) = @_;
 
-    return SUCCESS if (! $self->{LOGGER}->can('event'));
+    return SUCCESS if (! $self->{log}->can('event'));
 
     $metadata{component} = $self->name();
     $metadata{component_module} = ref($self);
 
-    return $self->{LOGGER}->event($object, %metadata);
+    return $self->{log}->event($object, %metadata);
 }
 
 =item event_report
@@ -321,7 +207,7 @@ sub event_report
 {
     my ($self) = @_;
 
-    my $history = $self->{LOGGER}->{$HISTORY};
+    my $history = $self->{log}->{$HISTORY};
     return [] if (! $history);
 
     my $match = sub {
@@ -353,8 +239,6 @@ sub event_report
 }
 
 
-=pod
-
 =item add_files()
 
 Stores files that have been manipulated by this component
@@ -368,8 +252,6 @@ sub add_files
     push(@{$self->{FILES}}, @files);
 }
 
-=pod
-
 =item get_files(): ref to list of strings
 
 Returns a reference to the list of files manipulated by the component
@@ -382,8 +264,6 @@ sub get_files
 
     return $self->{FILES};
 }
-
-=pod
 
 =back
 
@@ -403,10 +283,8 @@ sub Configure
     my ($self, $config) = @_;
 
     $self->error('Configure() method not implemented by component');
-    return undef;
+    return;
 }
-
-=pod
 
 =item Unconfigure($config): boolean
 
@@ -420,11 +298,9 @@ sub Unconfigure
     my ($self, $config) = @_;
 
     $self->error('Unconfigure() method not implemented by component');
-    return undef;
+    return;
 }
 
-
-=pod
 
 =back
 
@@ -451,9 +327,86 @@ sub _initialize
     $self->{ERRORS}=0;
     $self->{WARNINGS}=0;
     $self->{FILES} = [];
-    $self->{LOGGER} = defined $logger ? $logger: $this_app;
+    $self->{log} = defined $logger ? $logger: $this_app;
+
+    # Keep LOGGER attribute for backwards compatibility
+    $self->{LOGGER} = $self->{log};
+
     return SUCCESS;
 }
+
+=back
+
+=head1 Legacy methods
+
+=over
+
+=item LogMessage
+
+Same as C<log> method.
+This is deprecated, use C<log> method instead.
+
+=cut
+
+*LogMessage = *log;
+
+=item Report
+
+Same as C<report> method.
+This is deprecated, use C<report> method instead.
+
+=cut
+
+*Report = *report;
+
+=item Info
+
+Same as C<info> method.
+This is deprecated, use C<info> method instead.
+
+=cut
+
+*Info = *info;
+
+=item Verbose
+
+Same as C<verbose> method.
+This is deprecated, use C<verbose> method instead.
+
+=cut
+
+*Verbose = *verbose;
+
+=item Debug
+
+Similar to C<debug>,  but the debug level is set to 1.
+
+This is deprecated, use C<debug> method instead and set loglevel.
+
+=cut
+
+sub Debug {
+    my $self = shift;
+    $self->debug(1, @_);
+}
+
+=item Warn
+
+Same as C<warn> method.
+This is deprecated, use C<report> method instead.
+
+=cut
+
+*Warn = *warn;
+
+=item Error
+
+Same as C<error> method.
+This is deprecated, use C<error> method instead.
+
+=cut
+
+*Error = *error;
 
 =pod
 
