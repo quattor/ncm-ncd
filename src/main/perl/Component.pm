@@ -1,33 +1,24 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} NCM::Component${PMpost}
 
-package NCM::Component;
-
-use strict;
 use LC::Exception qw (SUCCESS throw_error);
 use LC::Sysinfo;
 use CAF::History qw($IDX);
 use CAF::Reporter qw($HISTORY);
 use parent qw(Exporter CAF::Object);
-use Template;
-use Template::Stash;
 
 our ($this_app, @EXPORT, $NoAction, $SYSNAME, $SYSVERS);
 
-
 *this_app = \$main::this_app;
 
-@EXPORT=qw($NoAction $SYSNAME $SYSVERS);
+@EXPORT = qw($NoAction $SYSNAME $SYSVERS);
 
-$NoAction=$this_app->option('noaction');
-$CAF::Object::NoAction=$NoAction;
+$NoAction = defined($this_app) ? $this_app->option('noaction') : 0;
+$CAF::Object::NoAction = $NoAction;
 
-$SYSNAME=LC::Sysinfo::os()->name;
-$SYSVERS=LC::Sysinfo::os()->version;
+$SYSNAME = LC::Sysinfo::os()->name;
+$SYSVERS = LC::Sysinfo::os()->version;
 
-my $EC=LC::Exception::Context->new->will_report_all;
+my $EC = LC::Exception::Context->new->will_report_all;
 
 =pod
 
@@ -56,9 +47,10 @@ write @array to component's logfile
 =cut
 
 *LogMessage = *log;
-sub log {
-  my $self=shift;
-  $self->{LOGGER}->log(@_);
+sub log
+{
+    my $self = shift;
+    $self->{LOGGER}->log(@_);
 }
 
 
@@ -71,8 +63,9 @@ write @array to component's logfile and stdout.
 =cut
 
 *Report = *report;
-sub report {
-  my $self=shift;
+sub report
+{
+  my $self = shift;
   $self->{LOGGER}->report(@_);
 }
 
@@ -85,9 +78,10 @@ same as 'report', but string prefixed by [INFO]
 =cut
 
 *Info = *info;
-sub info {
-  my $self=shift;
-  $self->{LOGGER}->info(@_);
+sub info
+{
+    my $self = shift;
+    $self->{LOGGER}->info(@_);
 }
 
 =pod
@@ -98,8 +92,9 @@ same as 'report', but string prefixed by [OK]
 
 =cut
 
-sub OK {
-  my $self=shift;
+sub OK
+{
+  my $self = shift;
   $self->{LOGGER}->OK(@_);
 }
 
@@ -112,9 +107,10 @@ as 'report' - only if verbose output is activated.
 =cut
 
 *Verbose = *verbose;
-sub verbose {
-  my $self=shift;
-  $self->{LOGGER}->verbose(@_);
+sub verbose
+{
+    my $self = shift;
+    $self->{LOGGER}->verbose(@_);
 }
 
 =pod
@@ -126,14 +122,15 @@ Debug(@array), the default debug level is set to 1.
 
 =cut
 
-sub debug {
-  my $self=shift;
-  $self->{LOGGER}->debug(@_);
+sub debug
+{
+    my $self = shift;
+    $self->{LOGGER}->debug(@_);
 }
 
 sub Debug {
-  my $self=shift;
-  $self->{LOGGER}->debug(1,@_);
+    my $self = shift;
+    $self->{LOGGER}->debug(1,@_);
 }
 
 
@@ -149,10 +146,11 @@ The ncd will report the number of warnings reported by the component.
 =cut
 
 *Warn = *warn;
-sub warn {
-  my $self=shift;
-  $self->{LOGGER}->warn(@_);
-  $self->{'WARNINGS'}++;
+sub warn
+{
+    my $self = shift;
+    $self->{LOGGER}->warn(@_);
+    $self->{WARNINGS}++;
 }
 
 =pod
@@ -168,12 +166,12 @@ The ncd will report the number of errors reported by the component.
 =cut
 
 *Error = *error;
-sub error {
-  my $self=shift;
-  $self->{LOGGER}->error(@_);
-  $self->{'ERRORS'}++;
+sub error
+{
+    my $self = shift;
+    $self->{LOGGER}->error(@_);
+    $self->{ERRORS}++;
 }
-
 
 
 =pod
@@ -184,9 +182,10 @@ Returns the component name
 
 =cut
 
-sub name {
-  my $self=shift;
-  return $self->{'NAME'};
+sub name
+{
+    my $self = shift;
+    return $self->{NAME};
 }
 
 =pod
@@ -197,7 +196,8 @@ Returns the standard configuration path for the component.
 
 =cut
 
-sub prefix {
+sub prefix
+{
   my ($self) = @_;
 
   return "/software/components/$self->{NAME}";
@@ -212,11 +212,12 @@ Returns the unescaped version of the string provided as parameter (as escaped by
 
 =cut
 
-sub unescape ($) {
-  my ($self,$str)=@_;
+sub unescape
+{
+    my ($self, $str) = @_;
 
-  $str =~ s!(_[0-9a-f]{2})!sprintf("%c",hex($1))!eg;
-  return $str;
+    $str =~ s!(_[0-9a-f]{2})!sprintf("%c",hex($1))!eg;
+    return $str;
 }
 
 =pod
@@ -227,13 +228,13 @@ Returns the escaped version of the string provided as parameter (similar to the 
 
 =cut
 
-sub escape ($) {
-  my ($self,$str)=@_;
+sub escape
+{
+    my ($self, $str) = @_;
 
-  $str =~ s/(^[0-9]|[^a-zA-Z0-9])/sprintf("_%lx", ord($1))/eg;
-  return $str;
+    $str =~ s/(^[0-9]|[^a-zA-Z0-9])/sprintf("_%lx", ord($1))/eg;
+    return $str;
 }
-
 
 
 =pod
@@ -244,10 +245,11 @@ Returns the number of calls to 'warn' by the component.
 
 =cut
 
-sub get_warnings {
-  my $self=shift;
+sub get_warnings
+{
+    my $self = shift;
 
-  return $self->{'WARNINGS'};
+    return $self->{WARNINGS};
 }
 
 =pod
@@ -258,10 +260,11 @@ Returns the number of calls to 'error' by the component.
 
 =cut
 
-sub get_errors {
-  my $self=shift;
+sub get_errors
+{
+    my $self = shift;
 
-  return $self->{'ERRORS'};
+    return $self->{ERRORS};
 }
 
 =pod
@@ -395,11 +398,12 @@ Component Configure method. Has to be overwritten if used.
 =cut
 
 
-sub Configure {
-  my ($self,$config)=@_;
+sub Configure
+{
+    my ($self, $config) = @_;
 
-  $self->error('Configure() method not implemented by component');
-  return undef;
+    $self->error('Configure() method not implemented by component');
+    return undef;
 }
 
 =pod
@@ -411,14 +415,13 @@ Component Unconfigure method. Has to be overwritten if used.
 =cut
 
 
-sub Unconfigure {
-  my ($self,$config)=@_;
+sub Unconfigure
+{
+    my ($self, $config) = @_;
 
-  $self->error('Unconfigure() method not implemented by component');
-  return undef;
+    $self->error('Unconfigure() method not implemented by component');
+    return undef;
 }
-
-
 
 
 =pod
@@ -435,28 +438,21 @@ object initialization (done via new)
 
 =cut
 
-sub _initialize {
-  my ($self,$name, $logger)=@_;
-
-  unless (defined $name) {
-    throw_error('bad initialization');
-    return undef;
-  }
-  $self->{'NAME'}=$name;
-  $self->{'ERRORS'}=0;
-  $self->{'WARNINGS'}=0;
-  $self->{FILES} = [];
-  $self->{LOGGER} = defined $logger ? $logger:$this_app;
-  return SUCCESS;
-}
-
-$Template::Stash::PRIVATE = undef;
-my $template = Template->new(INCLUDE_PATH =>
-			     $this_app->option("template-path"));
-
-sub template
+sub _initialize
 {
-    return $template;
+    my ($self, $name, $logger) = @_;
+
+    unless (defined $name) {
+        throw_error('bad initialization (missing first "name" agument)');
+        return undef;
+    }
+
+    $self->{NAME}=$name;
+    $self->{ERRORS}=0;
+    $self->{WARNINGS}=0;
+    $self->{FILES} = [];
+    $self->{LOGGER} = defined $logger ? $logger: $this_app;
+    return SUCCESS;
 }
 
 =pod
