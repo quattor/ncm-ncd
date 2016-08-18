@@ -233,6 +233,23 @@ sub _initialize
         return;
     }
 
+    if ($tree->{version}) {
+        # version is part of the PMpost maven template
+        # be aware of obscure tainting errors (version uses XS); untaint if needed
+        local $@;
+        eval {
+            $self->{VERSION_CONFIG} = version->new($tree->{version});
+        };
+        if ($@) {
+            $self->error("component $name has invalid version from config $tree->{version} (bug in profile?): $@");
+            return;
+        } else {
+            $self->verbose("component $name version from config $self->{VERSION_CONFIG}");
+        }
+    } else {
+        $self->verbose("component $name no version from config");
+    };
+
     my $active = $tree->{active};
 
     if ($active) {
@@ -244,6 +261,7 @@ sub _initialize
         $self->error("component $name 'active' flag not found in node profile");
         return;
     }
+
 }
 
 
