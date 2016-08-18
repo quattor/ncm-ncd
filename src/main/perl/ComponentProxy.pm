@@ -308,8 +308,15 @@ sub _load
         return;
     }
 
-    my $component;
+    my $version;
+    eval "\$version=\$$package\:\:VERSION;";
+    if ($@) {
+        $self->verbose("component package $package for $name has no VERSION defined: $@");
+    } else {
+        $self->{VERSION_PACKAGE} = $version;
+    }
 
+    my $component;
     eval {
         $component = $package->new($name, $self);
     };
