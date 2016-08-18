@@ -16,6 +16,7 @@ use JSON::XS;
 use LC::Exception;
 use Test::MockModule;
 use Cwd;
+
 use Readonly;
 Readonly my $COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
 
