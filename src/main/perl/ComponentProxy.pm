@@ -367,6 +367,36 @@ sub _setDependencies
 }
 
 
+=item _version_check
+
+Apply version related checks.
+
+Return C<SUCCESS> if there are no version-related issues;
+report an error and return undef otherwise.
+
+Current version only reports possible different versions,
+and always returns C<SUCCESS>
+(but behaviour might change in future versions).
+
+=cut
+
+# TODO implement actual policy, part of issue #41
+
+sub _version_check
+{
+    my ($self) = @_;
+
+    my $cfg = $self->{VERSION_CONFIG};
+    my $pkg = $self->{VERSION_PACKAGE};
+
+    if (defined($pkg) && defined($cfg)) {
+        if ($pkg != $cfg) {
+            $self->verbose("Config version $cfg is different from package version $pkg");
+        }
+    }
+
+    return SUCCESS;
+}
 
 
 =item _execute
@@ -382,16 +412,18 @@ sub _execute
 {
     my ($self, $method) = @_;
 
-    # load the component
-
     my $name = $self->name();
     my $mod = $self->module();
 
+    # load the component
     my $component = $self->_load();
     unless (defined $component) {
         $self->error("cannot load component: $name");
         return;
     }
+
+    # Just return, reports it's own error/warning/...
+    return if ! $self->_version_check();
 
     # redirect log file to component's log file
     if ($this_app->option('multilog')) {
