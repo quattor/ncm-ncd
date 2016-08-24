@@ -89,7 +89,7 @@ sub app_options()
         {
             NAME    => 'retries=i',
             HELP    => 'number of retries if ncd is locked',
-            DEFAULT => 10
+            DEFAULT => 30
         },
 
         {
