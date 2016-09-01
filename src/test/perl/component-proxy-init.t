@@ -15,6 +15,7 @@ use CAF::Object;
 use Readonly;
 use JSON::XS;
 use LC::Exception;
+use version;
 
 $CAF::Object::NoAction = 1;
 
@@ -32,6 +33,13 @@ sub ignore
 $EC->error_handler(\&ignore);
 $EC->warning_handler(\&ignore);
 
+use Test::MockModule;
+my $mock = Test::MockModule->new('NCD::ComponentProxy');
+$mock->mock('error', sub (@) {
+    my $self = shift;
+    my $lasterror = join(" ", @_);
+    diag("ERROR: $lasterror");
+});
 
 =pod
 
@@ -59,6 +67,7 @@ isa_ok($cmp, "NCD::ComponentProxy", "Active component foo is loaded");
 is($cmp->{NAME}, "foo", "Correct name assigned");
 is($cmp->{CONFIG}, $cfg, "Configuration stored in the proxy");
 is($cmp->{MODULE}, $cmp->{NAME}, "Name is used as module if no module is listed");
+is($cmp->{VERSION_CONFIG}, version->new('1.2.3'), "version from config set");
 
 =pod
 
@@ -83,6 +92,7 @@ $cmp = NCD::ComponentProxy->new("baz", $cfg);
 isa_ok($cmp, "NCD::ComponentProxy", "Delegated component is instanciated");
 is($cmp->{NAME}, "baz", "Correct name assigned");
 is($cmp->{MODULE}, "woof", "Correct module assigned");
+ok(! defined($cmp->{VERSION_CONFIG}), "No version from config set if none set in profile");
 
 =pod
 
@@ -94,5 +104,18 @@ No proxy is returned
 
 $cmp = NCD::ComponentProxy->new("lkjhljhljh", $cfg);
 is($cmp, undef, "Non-existing component receives no proxy");
+
+=pod
+
+=head2 The component has invalid version in profile
+
+No proxy is returned
+
+=cut
+
+$cmp = NCD::ComponentProxy->new("invversion", $cfg);
+is($cmp, undef, "Component with invalid version receives no proxy");
+
+
 
 done_testing();

@@ -1,20 +1,13 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} NCD::ComponentProxy${PMpost}
 
-
-package NCD::ComponentProxy;
-
-use strict;
-use warnings;
-use LC::Exception qw (SUCCESS throw_error);
+use CAF::Object qw (SUCCESS throw_error);
 
 use CAF::Reporter qw($HISTORY $LOGFILE);
+
 use parent qw(CAF::ReporterMany CAF::Object);
+
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Path;
-use CAF::Log;
 use LC::Check;
 
 use File::Path;
@@ -22,14 +15,15 @@ use File::Path;
 our $this_app;
 *this_app = \$main::this_app;
 
+my $ec = LC::Exception::Context->new->will_store_all;
 
-my $_COMP_PREFIX='/software/components';
+use Readonly;
+Readonly my $COMPONENTS_PROFILE_PATH => '/software/components';
+Readonly my $RUN_FROM => '/tmp';
 
-my $ec=LC::Exception::Context->new->will_store_all;
-
-use constant COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
+Readonly my $COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
 # Methods called during _execute
-use constant COMPONENT_MANDATORY_METHODS => qw(Configure
+Readonly::Array my @COMPONENT_MANDATORY_METHODS => qw(Configure
     error warn get_errors get_warnings name
 );
 
@@ -52,101 +46,97 @@ components.
 
 =over 4
 
-=item executeConfigure(): ref(hash)
+=item executeConfigure
 
-executeConfigure loads and executes the component with
-'configure'. the number of produced errors and warnings is returned in
-a hash ('ERRORS','WARNINGS'). If the component cannot be executed,
-undef is returned.
+executeConfigure loads and executes the component with C<Configure> method.
+The number of produced errors and warnings is returned in
+a hashref with keys C<ERRORS> and C<WARNINGS>.
+If the component cannot be executed, undef is returned.
 
 =cut
 
-sub executeConfigure {
-    my $self=shift;
+sub executeConfigure
+{
+    my $self = shift;
 
     return $self->_execute('Configure');
 }
 
 
-=pod
+=item executeUnconfigure
 
-=item executeUnconfigure(): ref(hash)
-
-executeUnconfigure loads and executes the component with
-'unconfigure'. the number of produced errors and warnings is returned
-in a hash ('ERRORS','WARNINGS'). If the component cannot be executed,
-undef is returned.
-
+executeUnconfigure loads and executes the component with C<Unconfigure>.
+The number of produced errors and warnings is returned in
+a hashref with keys C<ERRORS> and C<WARNINGS>.
+If the component cannot be executed, undef is returned.
 
 =cut
 
-sub executeUnconfigure {
-    my $self=shift;
+sub executeUnconfigure
+{
+    my $self = shift;
 
     return $self->_execute('Unconfigure');
 }
 
 
-=pod
-
-=item name(): string
+=item name
 
 returns the name of the component
 
 =cut
 
-sub name {
-    my $self=shift;
-    return $self->{'NAME'};
+sub name
+{
+    my $self = shift;
+    return $self->{NAME};
 }
 
 =pod
 
-=item module(): string
+=item module
 
 returns the module to be loaded for executing the component
 
 =cut
 
-sub module {
+sub module
+{
     my $self = shift;
     return $self->{MODULE};
 }
 
 
-=pod
+=item getPreDependencies
 
-=item getPreDependencies(): ref(@array)
-
-returns an array to the names of predependent components. The array is
-empty if no predependencies are found.
+returns an arrayref with the names of predependent components.
+The arrayref is empty if no predependencies are found.
 
 =cut
 
-sub getPreDependencies {
-    my $self=shift;
-
-    return $self->{'PRE_DEPS'};
+sub getPreDependencies
+{
+    my $self = shift;
+    return $self->{PRE_DEPS};
 }
 
-=pod
 
-=item getPostDependencies(): ref(@array)
+=item getPostDependencies
 
-returns an array to the names of postdependent components. The array is
-empty if no postdependencies are found.
+returns an arrayref with the names of postdependent components.
+The array is empty if no postdependencies are found.
 
 =cut
 
-sub getPostDependencies {
-    my $self=shift;
+sub getPostDependencies
+{
+    my $self = shift;
 
-    return $self->{'POST_DEPS'};
+    return $self->{POST_DEPS};
 }
 
-=pod
 
-=item getComponentFilename()
+=item getComponentFilename
 
 Returns the absolute filename of the components perl module.
 
@@ -155,10 +145,11 @@ module should be looked for.
 
 =cut
 
-sub getComponentFilename {
+sub getComponentFilename
+{
     my ($self, $base) = @_;
 
-    $base ||= $self->{'COMPONENT_BASE'};
+    $base ||= $self->{COMPONENT_BASE};
 
     my $mod = $self->module();
     $mod =~ s{::}{/}g;
@@ -170,9 +161,7 @@ sub getComponentFilename {
 }
 
 
-=pod
-
-=item hasFile(): boolean
+=item hasFile
 
 returns 1 if the components perl module is installed, 0 otherwise.
 
@@ -181,12 +170,13 @@ module should be looked for.
 
 =cut
 
-sub hasFile {
+sub hasFile
+{
     my ($self, $base) = @_;
 
     my $filename = $self->getComponentFilename($base);
 
-    return -r $filename ? 1:0 ;
+    return -r $filename ? 1 : 0;
 }
 
 =back
@@ -195,80 +185,97 @@ sub hasFile {
 
 =over
 
-=item _initialize($comp_name, $config)
+=item _initialize
 
 object initialization (done via new)
 
 =cut
 
-sub _initialize {
-    my ($self,$name,$config)=@_;
+sub _initialize
+{
+    my ($self, $name, $config) = @_;
     $self->setup_reporter();
 
     if (!defined($name) || !defined($config)) {
         throw_error('bad initialization');
-        return undef;
+        return;
     }
 
-    if ($name !~ m{^([a-zA-Z_]\w+)$}) {
+    if ($name =~ m{^([a-zA-Z_]\w+)$}) {
+        $self->{NAME} = $1;
+    } else {
         throw_error ("Bad component name: $name");
-        return undef;
+        return;
     }
 
-    $self->{'NAME'}=$1;
-    $self->{'CONFIG'}=$config;
+    $self->{CONFIG} = $config;
 
     # Default basepath for NCM modules
-    $self->{'COMPONENT_BASE'} = COMPONENT_BASE;
+    $self->{COMPONENT_BASE} = $COMPONENT_BASE;
 
     # check for existing and 'active' in node profile
 
-    # component itself does however not get loaded yet (this is done on demand
-    # by the 'execute' commands)
+    # component itself does however not get loaded yet
+    # (this is done on demand by the 'execute' commands)
 
-    my $cdb_entry=$config->getElement("$_COMP_PREFIX/$name");
-    if (!defined($cdb_entry)) {
-        $ec->ignore_error();
-        $self->error('no such component in node profile: '.$name);
-        return undef;
+    my $tree = $config->getTree("$COMPONENTS_PROFILE_PATH/$name", 2);
+    if (! $tree) {
+        $self->error("no such component in node profile: $name");
+        return;
     }
 
-    $self->{MODULE} = $config->elementExists("$_COMP_PREFIX/$name/ncm-module") ?
-            $config->getElement("$_COMP_PREFIX/$name/ncm-module")->getValue() :
-            $self->{NAME};
+    $self->{MODULE} = $tree->{'ncm-module'} || $self->{NAME};
 
-    if ($self->{MODULE} !~ m{^([a-zA-Z_]\w*(?:::[a-zA-Z_]\w*)*)$}) {
-        throw_error ("Bad module name: $self->{MODULE}");
-        return undef;
-    }
-    $self->{MODULE} = $1;
-
-    my $prop=$config->getElement("$_COMP_PREFIX/$name/active");
-    if (defined ($prop)) {
-        my $active=$prop->getBooleanValue();
-        if ($active ne 'true') {
-            $self->error("component $name is not active");
-            return undef;
-        }
-        return ($self->_setDependencies());
+    if ($self->{MODULE} =~ m{^([a-zA-Z_]\w*(?:::[a-zA-Z_]\w*)*)$}) {
+        $self->{MODULE} = $1;
     } else {
-        $ec->ignore_error();
-        $self->error("component $name 'active' flag not found in node profile");
-        return undef;
+        throw_error ("Bad module name: $self->{MODULE}");
+        return;
     }
+
+    if ($tree->{version}) {
+        # version is part of the PMpost maven template
+        # be aware of obscure tainting errors (version uses XS); untaint if needed
+        local $@;
+        eval {
+            $self->{VERSION_CONFIG} = version->new($tree->{version});
+        };
+        if ($@) {
+            $self->error("component $name has invalid version from config $tree->{version} (bug in profile?): $@");
+            return;
+        } else {
+            $self->verbose("component $name version from config $self->{VERSION_CONFIG}");
+        }
+    } else {
+        $self->verbose("component $name no version from config");
+    };
+
+    my $active = $tree->{active};
+
+    if ($active) {
+        return ($self->_setDependencies());
+    } elsif (defined $active) {
+        $self->error("component $name is not active");
+        return;
+    } else {
+        $self->error("component $name 'active' flag not found in node profile");
+        return;
+    }
+
 }
 
 
-=pod
+=item _load
 
-=item _load(): boolean
+Load the component file in a separate namespace C<< NCM::Component::<name> >>
 
-loads the component file in a separate namespace (NCM::Component::$name)
+Returns the component instance on success, undef on failure.
 
 =cut
 
-sub _load {
-    my $self=shift;
+sub _load
+{
+    my $self = shift;
 
     my $mod = $self->module();
     my $name = $self->name();
@@ -276,17 +283,18 @@ sub _load {
     my $mod_fn = $self->getComponentFilename();
     if (!$self->hasFile()) {
         # No arguments passed to hasFile
-        $self->error("component $mod is not installed ",
-                     "(looking for $mod_fn)");
-        return undef;
+        $self->error("component $mod is not installed (looking for $mod_fn)");
+        return;
     }
+
+    local $@;
 
     my $package = "NCM::Component::$mod";
 
     eval ("use $package;");
     if ($@) {
         $self->error("bad Perl code in $package ($mod_fn): $@");
-        return undef;
+        return;
     }
 
     my $comp_EC;
@@ -297,113 +305,132 @@ sub _load {
                      "(note 1: the component package name has to be exactly ",
                      "'$package' - please verify this inside $mod_fn) ",
                      '(note 2: $EC has to be declared in "our (...)")');
-        return undef;
+        return;
+    }
+
+    my $version;
+    eval "\$version=\$$package\:\:VERSION;";
+    if ($@) {
+        $self->verbose("component package $package for $name has no VERSION defined: $@");
+    } else {
+        $self->{VERSION_PACKAGE} = $version;
     }
 
     my $component;
-    eval("\$component=$package->new(\$name, \$self)");
+    eval {
+        $component = $package->new($name, $self);
+    };
     if ($@) {
         $self->error("component $mod instantiation statement fails: $@");
-        return undef;
+        return;
     }
 
-    foreach my $mandatory_method (COMPONENT_MANDATORY_METHODS) {
+    foreach my $mandatory_method (@COMPONENT_MANDATORY_METHODS) {
         if (! $component->can($mandatory_method)) {
             $self->error("component $mod is missing the mandatory $mandatory_method method");
-            return undef;
+            return;
         }
     }
+
     return $component;
 }
 
 
-=pod
-
-=item _setDependencies(): boolean
+=item _setDependencies
 
 Reads the dependencies on other components via the NVA API and stores
 them internally. They can be recovered by getDependencies()
 
 =cut
 
-sub _setDependencies {
+sub _setDependencies
+{
 
-    my ($self)=@_;
+    my ($self) = @_;
 
-    $self->{PRE_DEPS}=[()];
-    $self->{POST_DEPS}=[()];
+    my $name = $self->name();
+    my $tree = $self->{CONFIG}->getTree("$COMPONENTS_PROFILE_PATH/$name/dependencies");
 
-    my $conf=$self->{CONFIG};
+    foreach my $type (qw(pre post)) {
+        my @deps = @{$tree->{$type} || []};
+        $self->{uc("${type}_deps")} = \@deps;
 
-    my $pre_path = "$_COMP_PREFIX/$self->{NAME}/dependencies/pre";
-    my $post_path = "$_COMP_PREFIX/$self->{NAME}/dependencies/post";
-
-
-    # check if paths are defined (otherwise, no dependencies)
-
-
-    my $res=$conf->getElement($pre_path);
-    if (defined $res) {
-        foreach my $el ($res->getList()) {
-            push (@{$self->{'PRE_DEPS'}},$el->getStringValue());
+        my $msg = "$type dependencies for component $name";
+        if (@deps) {
+            $self->debug(2, "$msg: ", join(',', @deps));
+        } else {
+            $self->debug(1, "no $msg");
         }
-        $self->debug(2, "pre dependencies for component $self->{'NAME'}: ",
-                     join(',',@{$self->{PRE_DEPS}}));
-    } else {
-        $ec->ignore_error();
-        $self->debug(1, "no pre dependencies found for $self->{NAME}");
     }
 
-    $res=$conf->getElement($post_path);
-    if (defined $res) {
-        my $el;
-        foreach $el ($res->getList()) {
-            push (@{$self->{'POST_DEPS'}},$el->getStringValue());
-        }
-        $self->debug(2, "post dependencies for component $self->{NAME}: ",
-                     join(',',@{$self->{POST_DEPS}}));
-    } else {
-        $ec->ignore_error();
-        $self->debug(1, "no post dependencies found for $self->{NAME}");
-    }
     return SUCCESS;
 }
 
 
+=item _version_check
 
-=pod
+Apply version related checks.
+
+Return C<SUCCESS> if there are no version-related issues;
+report an error and return undef otherwise.
+
+Current version only reports possible different versions,
+and always returns C<SUCCESS>
+(but behaviour might change in future versions).
+
+=cut
+
+# TODO implement actual policy, part of issue #41
+
+sub _version_check
+{
+    my ($self) = @_;
+
+    my $cfg = $self->{VERSION_CONFIG};
+    my $pkg = $self->{VERSION_PACKAGE};
+
+    if (defined($pkg) && defined($cfg)) {
+        if ($pkg != $cfg) {
+            $self->verbose("Config version $cfg is different from package version $pkg");
+        }
+    }
+
+    return SUCCESS;
+}
+
 
 =item _execute
 
 common function for executeConfigure() and executeUnconfigure()
 
+Adds the C<USR1> signal handler (reports the (currently active) component and method)
+C<HUP>, C<PIPE> and C<ALRM> signals are ignored during the method execution.
+
 =cut
 
-sub _execute {
-    my ($self,$method)=@_;
+sub _execute
+{
+    my ($self, $method) = @_;
 
-    # load the component
-
-    my $retval;
-    my $name=$self->name();
+    my $name = $self->name();
     my $mod = $self->module();
 
-    local $SIG{'USR1'} = sub {
-        $self->info("Executing component $name");
-    };
-
-    my $component=$self->_load();
+    # load the component
+    my $component = $self->_load();
     unless (defined $component) {
         $self->error("cannot load component: $name");
-        return undef;
+        return;
     }
+
+    # Just return, reports it's own error/warning/...
+    return if ! $self->_version_check();
 
     # redirect log file to component's log file
     if ($this_app->option('multilog')) {
         my $logfilename = $this_app->option("logdir")."/component-$name.log";
         if (! $self->init_logfile($logfilename, 'at')) {
             $self->error("cannot open component log file: $logfilename");
-            return undef;
+            return;
         }
     } else {
         $self->set_report_logfile ($this_app->{$LOGFILE});
@@ -414,11 +441,11 @@ sub _execute {
 
     $self->log('-----------------------------------------------------------');
 
-    my $lcNoAct=$LC::Check::NoAction;
+    my $noaction_orig = $LC::Check::NoAction;
     if ($this_app->option('noaction')) {
-        $LC::Check::NoAction=1;
-        my $compname=$self->{'NAME'};
-        my $noact_supported=undef;
+        $LC::Check::NoAction = 1;
+        my $compname = $self->{'NAME'};
+        my $noact_supported = undef;
         eval "\$noact_supported=\$NCM::Component::$mod\:\:NoActionSupported;";
         if ($@ || !defined $noact_supported || !$noact_supported) {
             # noaction is not supported by the component, skip
@@ -426,46 +453,67 @@ sub _execute {
             $self->info("component $compname (implemented by $mod) has ",
                         "NoActionSupported not defined or false, skipping ",
                         "noaction run");
-            $retval= {
-                'WARNINGS'=>0,
-                'ERRORS'=>0
-               };
+            my $retval = {
+                WARNINGS => 0,
+                ERRORS => 0
+            };
             return $retval;
         } else {
             $self->info("note: running component $compname in noaction mode");
         }
     }
 
-    # execute component
-    my $result;
-    chdir ('/tmp');
-    my %ENV_BK=%ENV;
+    # run from /tmp
+    # TODO: chdir back to pwd?
+    if (chdir($RUN_FROM)) {
+        $self->debug(1, "Changed to $RUN_FROM before executing component $name method $method");
+    } else {
+        $self->warn("Fail to change to $RUN_FROM before executing component $name method $method");
+    };
+
+    my %ENV_ORIG = %ENV;
+    my %SIG_ORIG = %SIG;
+
+    # USR1 reports current active component / method
+    $SIG{'USR1'} = sub {
+        $self->info("Executing component $name $method");
+    };
+
     # ensure that these signals get ignored
     # (%SIG is redefined by Perl itself sometimes)
-    $SIG{$_}='IGNORE' foreach qw(HUP PIPE ALRM);
+    $SIG{$_} = 'IGNORE' foreach qw(HUP PIPE ALRM);
 
-    # go and run the component
+    # execute component
+    # TODO: return value $result is unused
+    local $@;
+    my $result;
     eval "\$result=\$component->$method(\$self->{'CONFIG'});";
 
-    %ENV=%ENV_BK;               # restore env and signals
+    # restore original env and signals
+    %ENV = %ENV_ORIG;
+    %SIG = %SIG_ORIG;
+
+    my $formatter = $this_app->option('verbose') || $this_app->option('debug')
+        ? "format_long" : "format_short";
+
+    my $retval;
     if ($@) {
         $self->error("component $name executing method $method fails: $@");
-        $retval=undef;
     } else {
         my $comp_EC;
         eval "\$comp_EC=\$NCM::Component::$mod\:\:EC;";
-        unless ($@) {
+        if ($@) {
+            # This is checked in _load
+            $self->error("No component exception handler for component $name");
+        } else {
             if ($comp_EC->error) {
-                $self->error('uncaught error exception in component:');
-                my $formatter=$this_app->option('verbose') ||
-                    $this_app->option('debug') ? "format_long" : "format_short";
+                $self->error("uncaught error exception in component: $name");
                 $component->error($comp_EC->error->$formatter());
                 $comp_EC->ignore_error();
             }
+
             if ($comp_EC->warnings) {
-                $self->warn('uncaught warning exception in component:');
-                my $formatter=$this_app->option('verbose') ||
-                    $this_app->option('debug') ? "format_long" : "format_short";
+                $self->warn("uncaught warning exception in component: $name");
                 foreach ($comp_EC->warnings) {
                     $component->warn($_->$formatter());
                 }
@@ -474,38 +522,29 @@ sub _execute {
         }
 
         if ($ec->error) {
-            $self->error('error exception thrown by component:');
-            my $formatter=$this_app->option('verbose') ||
-                $this_app->option('debug') ? "format_long" : "format_short";
+            $self->error("error exception thrown by component: $name");
             $component->error($ec->error->$formatter());
             $ec->ignore_error();
         }
         if ($ec->warnings) {
-            $self->warn('warning exception thrown by component:');
-            my $formatter=$this_app->option('verbose') ||
-                $this_app->option('debug') ? "format_long" : "format_short";
+            $self->warn("warning exception thrown by component: $name");
             foreach ($ec->warnings) {
                 $component->warn($_->$formatter());
             }
             $ec->ignore_warnings();
         }
 
-        # future: support a 'fatal' or 'abort' function
-        #  if ($component->get_abort()) {
-        #    $self->error("fatal error in component execution, aborting...");
-        #    return undef;
-        #  }
+        $retval = {
+            WARNINGS => $component->get_warnings(),
+            ERRORS => $component->get_errors()
+        };
 
-        $self->info("configure on component ", $component->name(),
-                    " executed, ", $component->get_errors(), ' errors, ',
-                    $component->get_warnings(), ' warnings');
-        $retval= {
-            'WARNINGS'=>$component->get_warnings(),
-            'ERRORS'=>$component->get_errors()
-           };
+        $self->info("configure on component $name executed, ",
+                    "$retval->{ERRORS} errors, ",
+                    "$retval->{WARNINGS} warnings");
 
         # TODO: make event_report a mandatory method
-        if($component->can('event_report')) {
+        if ($component->can('event_report')) {
             my $idxs = $component->event_report();
             if (defined($idxs)) {
                 push(@{$this_app->{REPORTED_EVENTS}}, @$idxs);
@@ -515,13 +554,14 @@ sub _execute {
         } else {
             $self->verbose('Cannot report events.')
         }
-
     }
 
     # restore logfile and noaction flags
     $self->set_report_logfile($this_app->{'LOG'})
-            if ($this_app->option('multilog'));
-    $LC::Check::NoAction=$lcNoAct;
+        if ($this_app->option('multilog'));
+
+    $LC::Check::NoAction = $noaction_orig;
+
     return $retval;
 }
 
