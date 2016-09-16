@@ -209,6 +209,23 @@ sub event_report
     return \@idxs;
 }
 
+=item set_active_config
+
+Set C<config> as the C<ACTIVE_CONFIG> attribute.
+
+Returns the current active config.
+
+=cut
+
+sub set_active_config
+{
+    my ($self, $config) = @_;
+
+    $self->{ACTIVE_CONFIG} = $config;
+
+    return $self->{ACTIVE_CONFIG};
+}
+
 =back
 
 =head1 Pure virtual methods
@@ -252,28 +269,56 @@ sub Unconfigure
 
 =over
 
-=item _initialize($comp_name)
+=item _initialize
 
 object initialization (done via new)
+
+Arguments
+
+=over
+
+=item name
+
+Set the component name
+
+=item logger
+
+Set the logger instance (C<main::this_app> is used as default when undefined)
+
+=back
+
+Optional arguments
+
+=over
+
+=item config
+
+Set config as active config (using C<set_active_config> method).
+
+=back
 
 =cut
 
 sub _initialize
 {
-    my ($self, $name, $logger) = @_;
+    my ($self, $name, $logger, %opts) = @_;
 
     unless (defined $name) {
         throw_error('bad initialization (missing first "name" agument)');
         return;
     }
 
-    $self->{NAME}=$name;
-    $self->{ERRORS}=0;
-    $self->{WARNINGS}=0;
-    $self->{log} = defined $logger ? $logger: $this_app;
+    $self->{NAME} = $name;
+    $self->{ERRORS} = 0;
+    $self->{WARNINGS} = 0;
+    $self->{log} = defined $logger ? $logger : $this_app;
 
     # Keep LOGGER attribute for backwards compatibility
     $self->{LOGGER} = $self->{log};
+
+    if ($opts{config}) {
+        $self->set_active_config($opts{config});
+    }
 
     return SUCCESS;
 }
