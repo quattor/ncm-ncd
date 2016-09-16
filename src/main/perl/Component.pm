@@ -226,6 +226,54 @@ sub set_active_config
     return $self->{ACTIVE_CONFIG};
 }
 
+=item get_tree
+
+Return C<EDG::WP4::CCM::Configuration->getTree> on the C<ACTIVE_CONFIG> attribute.
+
+All arguments are passed to C<getTree>.
+
+If no arguments are specified, the path passed to C<getTree> is
+the component prefix (using the C<prefix> method).
+
+If the path specified is not absolute, the path passed to C<getTree> is
+prefixed with the component prefix (using the C<prefix> method).
+
+Returns undef on failure, with C<fail> attribute set in case of an error.
+
+(Requires active configuration set).
+
+=cut
+
+sub get_tree
+{
+    my ($self, $path, @args) = @_;
+
+    if (! defined($path)) {
+        $path = $self->prefix();
+    } elsif ($path !~ m{^/}) {
+        my $prefix = $self->prefix();
+        $prefix =~ s{/*$}{}; # remove trailing /
+        $path = "$prefix/$path";
+    }
+
+    # Handle any previous errors on active config
+    delete $self->{ACTIVE_CONFIG}->{fail};
+    # Reset previous fail attribute
+    delete $self->{fail};
+    my $tree = $self->{ACTIVE_CONFIG}->getTree($path, @args);
+
+    if (defined($tree)) {
+        return $tree;
+    } else {
+        my $fail = $self->{ACTIVE_CONFIG}->{fail};
+        if (defined($fail)) {
+            return $self->fail($fail);
+        } else {
+            return;
+        }
+    }
+}
+
 =back
 
 =head1 Pure virtual methods

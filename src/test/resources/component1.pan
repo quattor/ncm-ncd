@@ -11,4 +11,3 @@ prefix "/software/components/component2";
 prefix "/system/network";
 "hostname" = "short";
 "domainname" = "example.com";
-

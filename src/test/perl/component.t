@@ -57,4 +57,35 @@ my $cmp2 = NCM::Component->new('component2', $obj, config => $cfg1);
 isa_ok($cmp2, 'NCM::Component', 'NCM::Component instance 2 created');
 is($cmp2->{ACTIVE_CONFIG}, $cfg1, "active config attribute set via init");
 
+=head1 get_tree method
+
+=cut
+
+ok(! defined($cmp2->{fail}), "fail attribute is not set");
+
+$cmp2->{ACTIVE_CONFIG}->{fail} = 'something';
+is_deeply($cmp2->get_tree("/system"), {network => {hostname => 'short', domainname => 'example.com'}},
+    "get_tree with absolute path returns tree from path");
+ok(! defined($cmp2->{ACTIVE_CONFIG}->{fail}), "fail attribute of active config is reset");
+ok(! defined($cmp2->{fail}), "fail attribute is not set on success");
+
+is_deeply($cmp2->get_tree(), {active => 1, special => {subtree => 1}},
+    "get_tree without path return tree from prefix");
+is_deeply($cmp2->get_tree("special"), {subtree => 1},
+    "get_tree with relative path return tree relative to prefix");
+
+# Test failure
+ok(! defined($cmp2->{fail}), "No fail attr set before testing failing get_tree");
+
+# invalid path is an error
+ok(!defined($cmp2->get_tree("//invalid/path")), "invalid path returns undef");
+is($cmp2->{fail}, "*** path //invalid/path must be an absolute path: start '', remainder  / invalid / path",
+   "fail attribute set with message after failing get_tree with invalid path");
+
+# non-existing path is not an error
+# should reset previous failure
+ok(!defined($cmp2->get_tree("/non/existing/path")), "non-existing path returns undef");
+ok(! defined($cmp2->{fail}), "non-existing path does not set fail attribute with get_tree");
+
+
 done_testing;
