@@ -265,6 +265,24 @@ sub get_files
     return $self->{FILES};
 }
 
+=item set_active_config
+
+Set C<config> as the C<ACTIVE_CONFIG> attribute.
+
+Returns the current active config.
+
+=cut
+
+sub set_active_config
+{
+    my ($self, $config) = @_;
+
+    $self->{ACTIVE_CONFIG} = $config;
+
+    return $self->{ACTIVE_CONFIG};
+}
+
+
 =back
 
 =head1 Pure virtual methods
