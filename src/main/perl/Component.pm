@@ -326,29 +326,57 @@ sub Unconfigure
 
 =over
 
-=item _initialize($comp_name)
+=item _initialize
 
 object initialization (done via new)
+
+Arguments
+
+=over
+
+=item name
+
+Set the component name
+
+=item logger
+
+Set the logger instance (C<main::this_app> is used as default when undefined)
+
+=back
+
+Optional arguments
+
+=over
+
+=item config
+
+Set config as active config (using C<set_active_config> method).
+
+=back
 
 =cut
 
 sub _initialize
 {
-    my ($self, $name, $logger) = @_;
+    my ($self, $name, $logger, %opts) = @_;
 
     unless (defined $name) {
         throw_error('bad initialization (missing first "name" agument)');
         return undef;
     }
 
-    $self->{NAME}=$name;
-    $self->{ERRORS}=0;
-    $self->{WARNINGS}=0;
+    $self->{NAME} = $name;
+    $self->{ERRORS} = 0;
+    $self->{WARNINGS} = 0;
     $self->{FILES} = [];
-    $self->{log} = defined $logger ? $logger: $this_app;
+    $self->{log} = defined $logger ? $logger : $this_app;
 
     # Keep LOGGER attribute for backwards compatibility
     $self->{LOGGER} = $self->{log};
+
+    if ($opts{config}) {
+        $self->set_active_config($opts{config});
+    }
 
     return SUCCESS;
 }
