@@ -555,7 +555,8 @@ sub _execute_dirty
     local $@;
     my $result;
     eval {
-        $result = $component->$method($self->{'CONFIG'});
+        $component->set_active_config($self->{CONFIG});
+        $result = $component->$method($self->{CONFIG});
     };
 
     my $formatter = $this_app->option('verbose') || $this_app->option('debug')
