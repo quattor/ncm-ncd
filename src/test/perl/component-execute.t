@@ -67,6 +67,7 @@ $mock->mock('_load', sub {
 is($cmp->_load(), $component, "_load returns component");
 isa_ok($component, 'NCM::Component::foo',
        '_load returns NCM::Component::foo instance');
+ok(! defined($component->{ACTIVE_CONFIG}), "no ACTIVE_CONFIG after load");
 
 # _version_check fails
 $error = 0;
@@ -94,6 +95,8 @@ is($initlog, "$logdir/component-foo.log at", "component foo logfile initialised 
 ok($history, "history reporting enabled");
 isa_ok($component, 'NCM::Component::foo', '_load from Configure NCM::Component::foo instance');
 is($component->{_config}, $cfg, "configuration instance passed during ComponentProxy init is passed to component foo Configure");
+is($component->{ACTIVE_CONFIG}, $cfg, "configuration instance set as ACTIVE_CONFIG by ComponentProxy");
+is($component->{_active_config}, $cfg, "configuration instance set as ACTIVE_CONFIG before Configure was called");
 
 # TODO: test noaction
 # TODO: test errors/warnings

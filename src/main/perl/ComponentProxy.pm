@@ -494,7 +494,10 @@ sub _execute
     # TODO: return value $result is unused
     local $@;
     my $result;
-    eval "\$result=\$component->$method(\$self->{'CONFIG'});";
+    eval {
+        $component->set_active_config($self->{CONFIG});
+        $result = $component->$method($self->{CONFIG});
+    };
 
     # restore original env and signals
     %ENV = %ENV_ORIG;
