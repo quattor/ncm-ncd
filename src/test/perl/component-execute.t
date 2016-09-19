@@ -38,6 +38,7 @@ ok(! exists($ENV{TEST_COMPONENTPROXY}), 'ENV variable set by component foo does 
 
 my $mock = Test::MockModule->new('NCD::ComponentProxy');
 
+
 my $error = 0;
 my $lasterror;
 $mock->mock('error', sub (@) {
@@ -110,6 +111,8 @@ ok($history, "history reporting enabled");
 isa_ok($component, 'NCM::Component::foo', '_load from Configure NCM::Component::foo instance');
 
 is_deeply(\%ENV, \%ORIG_ENV, "_execute does not modify environment");
+
+is($component->{_config}, $cfg, "configuration instance passed during ComponentProxy init is passed to component foo Configure");
 
 # TODO: test noaction
 # TODO: test errors/warnings
