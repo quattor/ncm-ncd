@@ -3,39 +3,34 @@
 # ${developer-info}
 # ${author-info}
 # ${build-info}
-#
-use lib '/usr/lib/perl';
-
-
-#############################################################
-# ncd main program
-#############################################################
-
-package main;
 
 use strict;
+use warnings;
+
+# required for CAF
+BEGIN {
+    unshift(@INC, '/usr/lib/perl');
+}
+
+# minimal Path
+$ENV{PATH} = join(":", qw(/bin /usr/bin /sbin /usr/sbin));
+# fix umask
+umask (022);
+
 use LC::Exception qw (SUCCESS throw_error);
 use CAF::FileReader;
 use EDG::WP4::CCM::Fetch qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
 use NCD::ComponentProxyList;
+use NCD::CLI;
+
 use vars qw($this_app %SIG);
 
 my $ec = LC::Exception::Context->new->will_store_errors;
 $LC::Exception::Reporter = \&main::error_reporter;
 
-# fix umask
-umask(022);
-
-# minimal Path
-$ENV{"PATH"} = "/bin:/sbin:/usr/bin:/usr/sbin";
-
 # unbuffer STDOUT & STDERR
 autoflush STDOUT 1;
 autoflush STDERR 1;
-
-#------------------------------------------------------------
-# Functions in the main program
-#------------------------------------------------------------
 
 sub signal_handler
 {
@@ -49,9 +44,7 @@ sub signal_handler
     $SIG{'HUP'}  = 'IGNORE';
     $this_app->warn('signal handler: received signal: ' . $signal);
     unless ($this_app->option('noaction')) {
-        #
         # handle the signal.
-        #
         $this_app->error('ncd exiting gracefully after signal hit.');
         $this_app->finish(-1);
     }
@@ -85,17 +78,14 @@ sub error_reporter
     die("finishing...") if $err->is_error;
 }
 
-#------------------------------------------------------------
-# main loop
-#------------------------------------------------------------
-
-#
 # initialize the ncd application
-#
-unless ($this_app = 'ncd'->new($0, @ARGV)) {
-    die("cannot start application");
-    exit(1);
+my $cmdtxt = "$0 with args ".join(',', @ARGV);
+unless ($this_app = NCD::CLI->new($0, @ARGV)) {
+    throw_error("Cannot start application ($cmdtxt).");
+    exit (1);
 }
+$this_app->debug(5, "Application started: $cmdtxt.");
+
 
 # Do not run if the file is present and check-noquattor is set
 if ($this_app->option('check-noquattor') &&
