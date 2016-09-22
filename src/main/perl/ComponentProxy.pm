@@ -236,15 +236,22 @@ sub _initialize
     if ($tree->{version}) {
         # version is part of the PMpost maven template
         # be aware of obscure tainting errors (version uses XS); untaint if needed
-        local $@;
-        eval {
-            $self->{VERSION_CONFIG} = version->new($tree->{version});
-        };
-        if ($@) {
-            $self->error("component $name has invalid version from config $tree->{version} (bug in profile?): $@");
-            return;
+        my $errmsg = "component $name has invalid version from config $tree->{version} (bug in profile?)";
+        my $pattern = '^(v?\d+(?:\.\d+(?:\.\d+)))$';
+        if ($tree->{version} =~ m/$pattern/) {
+            local $@;
+            eval {
+                $self->{VERSION_CONFIG} = version->new($1);
+            };
+            if ($@) {
+                $self->error("$errmsg: $@");
+                return;
+            } else {
+                $self->verbose("component $name version from config $self->{VERSION_CONFIG}");
+            }
         } else {
-            $self->verbose("component $name version from config $self->{VERSION_CONFIG}");
+            $self->error("$errmsg: does not match regex pattern $pattern");
+            return;
         }
     } else {
         $self->verbose("component $name no version from config");
