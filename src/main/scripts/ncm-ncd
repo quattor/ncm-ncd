@@ -19,7 +19,6 @@ umask (022);
 
 use LC::Exception qw (SUCCESS throw_error);
 use CAF::FileReader;
-use EDG::WP4::CCM::Fetch qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
 use NCD::ComponentProxyList;
 use NCD::CLI;
 
@@ -32,28 +31,7 @@ $LC::Exception::Reporter = \&main::error_reporter;
 autoflush STDOUT 1;
 autoflush STDERR 1;
 
-sub signal_handler
-{
-    my $signal = shift;
-
-    # ignore further signals
-    $SIG{'INT'}  = 'IGNORE';
-    $SIG{'TERM'} = 'IGNORE';
-    $SIG{'QUIT'} = 'IGNORE';
-    $SIG{'USR2'} = 'IGNORE';
-    $SIG{'HUP'}  = 'IGNORE';
-    $this_app->warn('signal handler: received signal: ' . $signal);
-    unless ($this_app->option('noaction')) {
-        # handle the signal.
-        $this_app->error('ncd exiting gracefully after signal hit.');
-        $this_app->finish(-1);
-    }
-    $this_app->finish(0);
-}
-
-#
 # report exceptions here in CAF compatible way
-#
 
 sub error_reporter
 {
@@ -78,209 +56,39 @@ sub error_reporter
     die("finishing...") if $err->is_error;
 }
 
-# initialize the ncd application
-my $cmdtxt = "$0 with args ".join(',', @ARGV);
-unless ($this_app = NCD::CLI->new($0, @ARGV)) {
-    throw_error("Cannot start application ($cmdtxt).");
-    exit (1);
-}
-$this_app->debug(5, "Application started: $cmdtxt.");
-
-
-# Do not run if the file is present and check-noquattor is set
-if ($this_app->option('check-noquattor') &&
-    -f NOQUATTOR && ! $this_app->option(NOQUATTOR_FORCE)) {
-    $this_app->warn("ncm-ncd: not doing anything with ",
-                    "check-noquattor set and ",
-                    "CCM updates disabled globally (", NOQUATTOR, " present)");
-    my $fh = CAF::FileReader->new(NOQUATTOR);
-    $this_app->warn("$fh") if $fh;
-    exit(NOQUATTOR_EXITCODE);
-}
-
-
-#
 # Handle signals properly
-#
+sub signal_handler
+{
+    my $signal = shift;
+
+    # ignore further signals
+    $SIG{'INT'}  = 'IGNORE';
+    $SIG{'TERM'} = 'IGNORE';
+    $SIG{'QUIT'} = 'IGNORE';
+    $SIG{'USR2'} = 'IGNORE';
+    $SIG{'HUP'}  = 'IGNORE';
+    $this_app->warn('signal handler: received signal: ' . $signal);
+    unless ($this_app->option('noaction')) {
+        # handle the signal.
+        $this_app->error('ncd exiting gracefully after signal hit.');
+        $this_app->finish(-1);
+    }
+    $this_app->finish(0);
+}
+
 $SIG{'INT'}  = \&signal_handler;
 $SIG{'TERM'} = \&signal_handler;
 $SIG{'QUIT'} = \&signal_handler;
 $SIG{'USR2'} = \&signal_handler;
 $SIG{'HUP'}  = 'IGNORE';
 
-#
-# process command line options before proceeding.
-#
-
-$this_app->report();
-$this_app->log('------------------------------------------------------------');
-$this_app->info('NCM-NCD version '
-        . $this_app->version()
-        . ' started by '
-        . $this_app->username() . ' at: '
-        . scalar(localtime));
-
-$this_app->info('Dry run, no changes will be performed (--noaction flag set)')
-    if ($this_app->option('noaction'));
-
-unless ($this_app->option('configure')
-    || $this_app->option('unconfigure')
-    || $this_app->option('list'))
-{
-    $this_app->error('please specify either configure, unconfigure or list as options');
-    $this_app->finish(-1);
-}
-
-if ($this_app->option('configure') && $this_app->option('unconfigure')) {
-    $this_app->error('configure and unconfigure options cannot be used simultaneously');
-    $this_app->finish(-1);
-}
-
-# add include directories to perl include search path
-if ($this_app->option('include')) {
-    unshift(@INC, split(/:+/, $this_app->option('include')));
-}
-
-# set local NVA API lock TBD
-unless (
-    $this_app->setLockCCMConfig($this_app->option('cache_root'), $this_app->option('useprofile')))
-{
-    $this_app->error("cannot get locked CCM configuration");
-    $this_app->finish(-1);
-}
-
-if ($this_app->option('list')) {
-    my $compList = NCD::ComponentProxyList->new($this_app->getCCMConfig());
-    unless (defined $compList) {
-        $ec->ignore_error();
-        $this_app->error("cannot get component(s)");
-        $this_app->finish(-1);
-    }
-    $compList->reportComponents();
-    $this_app->finish(0);
-}
-
-#
-# now, do either configure or unconfigure. Set the application lock
-#
-
-$this_app->verbose('checking for ncm-ncd locks...');
-unless ($this_app->option("ignorelock")) {
-    $this_app->lock() or $this_app->finish(-1);
-}
-
-# ignore-errors-from-dependencies implies nodeps and autodeps
-if($this_app->option('ignore-errors-from-dependencies')) {
-    $this_app->{CONFIG}->set('nodeps', 1);
-    $this_app->{CONFIG}->set('autodeps', 1);
-}
-
-my ($method, $msg);
-if ($this_app->option('unconfigure')) {
-    #
-    # UNCONFIGURE option
-    #
-    unless (scalar @ARGV) {
-        $this_app->error("unconfigure requires a component as argument");
-        $this_app->finish(-1);
-    }
-    unless (scalar @ARGV == 1) {
-        $this_app->error('more than one components cannot be unconfigured at a time');
-        $this_app->finish(-1);
-    }
-    $method = 'executeUnconfigComponent';
-    $msg    = 'unconfigure';
+# initialize the ncd application
+my $cmdtxt = "$0 with args ".join(',', @ARGV);
+$this_app = NCD::CLI->new($0, @ARGV);
+if ($this_app) {
+    $this_app->debug(5, "Application started: $cmdtxt.");
+    $this_app->main($ec);
 } else {
-    #
-    # CONFIGURE option
-    #
-    $this_app->info('Ignoring broken pre/post dependencies (--nodeps flag set)')
-        if ($this_app->option('nodeps'));
-    $method = 'executeConfigComponents';
-    $msg    = 'configure';
+    throw_error("Cannot start application ($cmdtxt).");
+    exit (1);
 }
-
-# remove duplicates and sort
-my @component_names = sort(keys( %{ {map {$_ => 1} @ARGV} } ));
-$this_app->verbose("Sorted unique components ", join(',', @component_names),
-                   " from commandline ", join(',', @ARGV));
-
-unless ($this_app->option('all') || scalar(@component_names)) {
-    $this_app->error("Please provide component names as parameters, or use --all");
-    $this_app->finish(-1);
-}
-
-my $skip = $this_app->option('skip');
-
-if (defined $skip && !$this_app->option('all')) {
-    $this_app->error("--skip option requires --all option to be set");
-    $this_app->finish(-1);
-}
-
-unless (scalar(@component_names)) {
-    $this_app->info('No components specified, getting all active ones.');
-}
-
-my $compList = NCD::ComponentProxyList->new($this_app->getCCMConfig(), $skip, @component_names);
-
-my @args;
-
-unless (defined $compList && defined($compList->{CLIST})) {
-    $ec->ignore_error();
-    $this_app->error("No components to dispatch.");
-    $this_app->finish(-1);
-}
-
-@args = (
-    $this_app->option("pre-hook"),  $this_app->option("pre-hook-timeout"),
-    $this_app->option("post-hook"), $this_app->option("post-hook-timeout")
-);
-
-if ($this_app->option("chroot")) {
-    chroot($this_app->option("chroot")) or die "Unable to chroot to ", $this_app->option("chroot");
-}
-
-chdir('/tmp');
-my $ret  = $compList->$method(@args);
-my $fun  = 'OK';
-my $exit = 0;
-if ($ret->{'ERRORS'}) {
-    $fun  = 'error';
-    $exit = -1;
-} elsif ($ret->{'WARNINGS'}) {
-    $fun = 'warn';
-}
-$this_app->report();
-$this_app->report('=========================================================');
-$this_app->report();
-
-# Get the list of components with errors
-
-my $arrayref        = $ret->{'ERR_COMPS'};
-my $err_comp_string = "";
-foreach my $err_comp (keys %$arrayref) {
-    $err_comp_string .= "$err_comp ($arrayref->{$err_comp}) ";
-}
-chop($err_comp_string);
-
-# Get the list of components with warnings
-
-my $arrayrefw        = $ret->{'WARN_COMPS'};
-my $warn_comp_string = "";
-foreach my $warn_comp (keys %$arrayrefw) {
-    $warn_comp_string .= "$warn_comp ($arrayrefw->{$warn_comp}) ";
-}
-chop($warn_comp_string);
-
-if ($ret->{'ERRORS'} > 0) {
-    $this_app->info("Errors while configuring $err_comp_string");
-}
-
-if ($ret->{'WARNINGS'} > 0) {
-    $this_app->info("Warnings while configuring $warn_comp_string");
-
-}
-
-$this_app->$fun($ret->{'ERRORS'}, ' errors, ', $ret->{'WARNINGS'}, ' warnings ', "executing $msg");
-
-$this_app->finish($exit);
