@@ -1,0 +1,264 @@
+# ${license-info}
+# ${developer-info}
+# ${author-info}
+# ${build-info}
+
+#
+# Set of tabcompletion function that can be used by other tools to access CCM data
+#
+
+# absolute path to tools, e.g. no fancy ls aliases and unnecessary PATH lookups
+_quattor_find_bin()
+{
+    local dir bin fn
+    fn="$1"
+
+    for dir in `echo $PATH | sed 's/:/ /g'`; do
+        bin="$dir/$fn"
+        if [ -x "$bin" ]; then
+            echo $bin
+            break
+        fi
+    done
+}
+_quattor_grep_path=`_quattor_find_bin grep`
+_quattor_sed_path=`_quattor_find_bin sed`
+_quattor_ls_path=`_quattor_find_bin ls`
+
+_quattor_grep()
+{
+    LC_ALL=C $_quattor_grep_path $@ 2>/dev/null
+    return $?
+}
+
+_quattor_ccm_conf=${QUATTOR_CCM_CONF:-/etc/ccm.conf}
+
+_quattor_ccm_cache_root=`_quattor_grep cache_root $_quattor_ccm_conf | $_quattor_sed_path "s/^.*\s\+//"`
+
+_quattor_ccm_get_cids()
+{
+    # always check the ${1} separately (e.g. in case it's the only one and $1 is not empty
+    $_quattor_ls_path -d $_quattor_ccm_cache_root/profile.${1} $_quattor_ccm_cache_root/profile.${1}[0-9]* 2>/dev/null | $_quattor_sed_path 's/[^ ]*\/profile.//g;:a;N;$!ba;s/\n/ /g;s/[^ ]*\/profile.//g'
+}
+
+_quattor_ccm_get_latest_cid()
+{
+    cat $_quattor_ccm_cache_root/latest.cid 2>/dev/null
+}
+
+_quattor_ccm_get_current_cid()
+{
+    cat $_quattor_ccm_cache_root/current.cid 2>/dev/null
+}
+
+# return a different path the 2nd argument
+_quattor_ccm_pan_path()
+{
+    local cid pref
+    cid=$1
+    pref=$2
+    # default is start from /
+    # require at least one extra character in completion
+    # patterns
+    #   only trailing /
+    #   non-/ with optional trailing /
+    #   single (pan) subpath enclosed in {} with optinal trailing /
+    $_quattor_grep_path -e "^${pref:-/}\(/\|\([^/}]\+\|\(\{\)\?[^{}]\+\?\}\)/\?\)\$" $_quattor_ccm_cache_root/profile.$cid/tabcompletion 2>/dev/null | $_quattor_sed_path ':a;N;$!ba;s/\n/ /g;'
+}
+
+_quattor_ccm_tabcomp_cids()
+{
+    COMPREPLY=( $(_quattor_ccm_get_cids ${COMP_WORDS[$COMP_CWORD]}) )
+    return 0
+}
+
+_quattor_ccm_tabcomp_pan_path()
+{
+    local cid cur prev new
+    if [ -z "$_quattor_ccm_tabcomp_active_cid" ]; then
+        _quattor_ccm_tabcomp_active_cid=`_quattor_ccm_get_current_cid`
+    fi
+
+    COMPREPLY=( $(_quattor_ccm_pan_path $_quattor_ccm_tabcomp_active_cid ${COMP_WORDS[$COMP_CWORD]}) )
+
+    counter=0
+    # with only one answer
+    while [ ${#COMPREPLY[@]} -eq 1 ]; do
+        # try again
+        new=( $(_quattor_ccm_pan_path $_quattor_ccm_tabcomp_active_cid ${COMPREPLY[0]}) )
+        # _quattor_ccm_pan_path looks for a different path
+        if [ ${#new[@]} -eq 0 ]; then
+            break
+        else
+            # assign copy of new to COMPREPLY
+            COMPREPLY=(${new[@]})
+        fi
+
+        # avoid infinite loops in this code
+        let counter=$counter+1
+        if [ $counter -gt 100 ]; then
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+# retrieve list of components from tabcompletion
+# cannot filter on active components based on tabcompletion data
+_quattor_ccm_tabcomp_components()
+{
+    local cid cur prev new
+    if [ -z "$_quattor_ccm_tabcomp_active_cid" ]; then
+        _quattor_ccm_tabcomp_active_cid=`_quattor_ccm_get_current_cid`
+    fi
+
+    COMPREPLY=( $(_quattor_ccm_pan_path $_quattor_ccm_tabcomp_active_cid /software/components/${COMP_WORDS[$COMP_CWORD]} | $_quattor_sed_path 's#/software/components/##g;s#/##g') )
+    return 0
+}
+
+# for args "a b", return longoptios string "--a --b"
+_quattor_ccm_make_long_options()
+{
+    opts=""
+    for opt in $@; do
+        opts="${opts}--$opt "
+    done
+    echo $opts
+}
+
+# sorted list of options for CCM::Options based tools
+_quattor_ccm_CCfg_options=(base_url cache_root ca_dir ca_file cert_file context dbformat debug force get_timeout group_readable json_typed keep_old key_file keytab lock_retries lock_wait preprocessor principal profile profile_failover purge_time retrieve_retries retrieve_wait tabcompletion trust world_readable)
+
+# sorted list of options for CCM::Options based tools
+# (except those already in _quattor_ccm_CCfg_options)
+_quattor_ccm_Options_options=(cfgfile cid component metaconfig profpath showcids)
+
+# sorted list of options for CCM::CLI based tools
+# (except those already in _quattor_ccm_CCfg_options and _quattor_ccm_Options_options)
+_quattor_ccm_CLI_options=(format show)
+
+# generate the longoptions
+_quattor_ccm_CCfg_longoptions=`_quattor_ccm_make_long_options ${_quattor_ccm_CCfg_options[@]}`
+_quattor_ccm_Options_longoptions=`_quattor_ccm_make_long_options ${_quattor_ccm_CCfg_options[@]} ${_quattor_ccm_Options_options[@]}`
+_quattor_ccm_CLI_longoptions=`_quattor_ccm_make_long_options ${_quattor_ccm_CCfg_options[@]} ${_quattor_ccm_Options_options[@]} ${_quattor_ccm_CLI_options[@]}`
+
+# formats (no list, space spearated sorted string)
+_quattor_ccm_CLI_formats="json ncmquery pan pancxml query tabcompletion yaml"
+
+# options handlers, to be used nested
+# exit code 0 if all is fine, no further processing is required
+# The logic in the *) case is the folowing:
+#     Is $prev an option to be handled by this function?
+#     If it's not, exit/return with non-zero and let something else deal with it
+#     If it is, all possible is done.
+
+_quattor_ccm_CCfg_handle_options()
+{
+    local cur prev
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    case "$prev" in
+        --ca_file|--cert_file|--key_file)
+            COMPREPLY=( $(compgen -f ${cur}) )
+            return 0
+            ;;
+        --cache_root|--ca_dir)
+            COMPREPLY=( $(compgen -d ${cur}) )
+            return 0
+            ;;
+        *)
+            compgen -W "$_quattor_ccm_CCfg_longoptions" -- "$prev" > /dev/null
+            return $?
+            ;;
+    esac
+
+    # should never get here
+    return 1
+}
+
+_quattor_ccm_Options_handle_options()
+{
+    local cur prev
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    case "$prev" in
+        --cfgfile)
+            COMPREPLY=( $(compgen -f ${cur}) )
+            return 0
+            ;;
+        --cid)
+            _quattor_ccm_tabcomp_cids
+            return 0
+            ;;
+        --profpath)
+            _quattor_ccm_tabcomp_pan_path
+            return 0
+            ;;
+        *)
+            compgen -W "$_quattor_ccm_Options_longoptions" -- "$prev" > /dev/null
+            return $?
+            ;;
+    esac
+
+    # should never get here
+    return 1
+}
+
+_quattor_ccm_CLI_handle_options()
+{
+    local cur prev
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    case "$prev" in
+        --format)
+            COMPREPLY=($(compgen -W "$_quattor_ccm_CLI_formats" -- ${cur}))
+            return 0
+            ;;
+        *)
+            compgen -W "$_quattor_ccm_CLI_longoptions" -- "$prev" > /dev/null
+            return $?
+            ;;
+    esac
+
+    # should never get here
+    return 1
+}
+
+# tabcompletion for CCM::CLI utils, e.g. ccm script
+_quattor_ccm_CLI()
+{
+    local cur prev
+
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # test CCfg options
+    _quattor_ccm_CCfg_handle_options && return 0
+
+    # test Options options
+    _quattor_ccm_Options_handle_options && return 0
+
+    # test CLI options
+    _quattor_ccm_CLI_handle_options && return 0
+
+    # Certainly not an option at this point
+    # Default is action show with profpath
+    if [[ $cur == /* ]]; then
+       _quattor_ccm_tabcomp_pan_path
+       return 0
+    fi
+
+    # No option or profpath to handle: show a / for default action with profpath or any option
+    COMPREPLY=($(compgen -W "/ $_quattor_ccm_CLI_longoptions" -- ${cur}))
+    return 0
+}
+
+#
+# Usage: complete bindings
+#
+complete -F _quattor_ccm_CLI ccm
