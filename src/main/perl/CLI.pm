@@ -166,7 +166,8 @@ sub setLockCCMConfig
 {
     my ($self, $cacheroot, $profileID) = @_;
 
-    my $msg = "CCM cache manager with cacheroot $cacheroot";
+    my $cacheroot_msg = "cacheroot ".(defined($cacheroot) ? $cacheroot : '<undef>');
+    my $msg = "CCM cache manager with $cacheroot_msg";
     $self->verbose("accessing $msg");
 
     $self->{CACHEMGR} = EDG::WP4::CCM::CacheManager->new($cacheroot);
@@ -178,7 +179,7 @@ sub setLockCCMConfig
     # Pass undef, not defined yet in CCM
     my $cred = undef;
 
-    $msg = "locked CCM configuration for cacheroot $cacheroot and profileID ".(defined($profileID) ? $profileID : '<undef>');
+    $msg = "locked CCM configuration for $cacheroot_msg and profileID ".(defined($profileID) ? $profileID : '<undef>');
     $self->verbose("getting $msg");
 
     $self->{CCM_CONFIG} = $self->{CACHEMGR}->getLockedConfiguration($cred, $profileID);
@@ -230,6 +231,13 @@ sub lock
     return $got_lock ? SUCCESS : undef;
 }
 
+# call exit with exit code, mainly for unittesting
+sub _exit
+{
+    my ($self, $exitcode) = @_;
+    exit($exitcode);
+}
+
 =item finish
 
 Release the lock (if this instance has it)
@@ -241,7 +249,14 @@ sub finish
 {
     my ($self, $ret) = @_;
     $self->{LOCK}->unlock() if ($self->{LOCK} && $self->{LOCK}->is_set());
-    exit($ret);
+    $self->_exit($ret);
+}
+
+# return uid, mainly for unittesting
+sub _get_uid
+{
+    my $self = shift;
+    return $>;
 }
 
 =item _initialize
@@ -267,13 +282,13 @@ sub _initialize
     # start initialization of CAF::Application
     #
     unless ($self->SUPER::_initialize(@_)) {
-        return undef;
+        return;
     }
 
     # ensure allowed to run
-    if ($>) {
+    if ($self->_get_uid()) {
         $self->error("Sorry " . $self->username() . ", this program must be run by root");
-        exit(-1);
+        $self->finish(-1);
     }
 
     $self->{NCD_LOGFILE} = $self->option("logdir") . '/ncd.log';
