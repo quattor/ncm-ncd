@@ -5,7 +5,7 @@ use parent qw(CAF::Application CAF::Reporter);
 use CAF::Reporter qw($LOGFILE);
 use CAF::Object qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
-use EDG::WP4::CCM::Fetch qw(NOQUATTOR_FORCE);
+use EDG::WP4::CCM::Fetch qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 
 use Readonly;
@@ -14,6 +14,7 @@ use Readonly;
 Readonly my $QUATTOR_LOCKDIR => '/var/lock/quattor';
 Readonly my $NCD_LOGDIR => '/var/log/ncm';
 Readonly my $NCD_CONFIGFILE => '/etc/ncm-ncd.conf';
+Readonly my $NCD_CHDIR => '/tmp';
 
 =head1 NAME NCD::CLI
 
@@ -22,9 +23,6 @@ Module for the ncm-ncd CLI script
 =head1 FUNCTIONS
 
 =over
-
-=cut
-
 
 =item app_options
 
@@ -180,7 +178,7 @@ sub setLockCCMConfig
     # Pass undef, not defined yet in CCM
     my $cred = undef;
 
-    $msg = "locked CCM configuration for cacheroot $cachroot and profileID ".(defined($profileID) ? $profileID : '<undef>');
+    $msg = "locked CCM configuration for cacheroot $cacheroot and profileID ".(defined($profileID) ? $profileID : '<undef>');
     $self->verbose("getting $msg");
 
     $self->{CCM_CONFIG} = $self->{CACHEMGR}->getLockedConfiguration($cred, $profileID);
@@ -291,6 +289,264 @@ sub _initialize
         if $self->option("history");
 
     return SUCCESS;
+}
+
+=item check_noquattor
+
+Handle the presence of the /etc/noquattor file.
+Exits, does not return anything.
+
+=cut
+
+sub check_noquattor
+{
+    my $self = shift;
+
+    # Do not run if the file is present and check-noquattor is set
+    if ($self->option('check-noquattor') &&
+        -f NOQUATTOR && ! $self->option(NOQUATTOR_FORCE)) {
+        $self->warn("ncm-ncd: not doing anything with ",
+                        "check-noquattor set and ",
+                        "CCM updates disabled globally (", NOQUATTOR, " present)");
+        my $fh = CAF::FileReader->new(NOQUATTOR);
+        $self->warn("$fh") if $fh;
+        $self->finish(NOQUATTOR_EXITCODE);
+    }
+}
+
+=item check_options
+
+Check for any conflicting options.
+
+Exits on any conflict, does not return anything.
+
+=cut
+
+sub check_options
+{
+    my $self = shift;
+
+    $self->info('Dry run, no changes will be performed (--noaction flag set)')
+        if ($self->option('noaction'));
+
+    unless ($self->option('configure')
+            || $self->option('unconfigure')
+            || $self->option('list'))
+    {
+        $self->error('please specify either configure, unconfigure or list as options');
+        $self->finish(-1);
+    }
+
+    if ($self->option('configure') && $self->option('unconfigure')) {
+        $self->error('configure and unconfigure options cannot be used simultaneously');
+        $self->finish(-1);
+    }
+}
+
+=item action
+
+Take action: list, unconfigure or (default) configure.
+
+Report the components with C<list> and exit.
+Otherwise return a hashref and the action name.
+
+Takes existing exception context as argument.
+
+=cut
+
+sub action
+{
+    my ($self, $ec) = @_;
+
+    my ($method, $action);
+
+    if ($self->option('list')) {
+        # Just do the list here
+        my $compList = NCD::ComponentProxyList->new($self->getCCMConfig());
+        unless (defined $compList) {
+            $ec->ignore_error();
+            $self->error("cannot get component(s)");
+            $self->finish(-1);
+        }
+        $compList->reportComponents();
+        $self->finish(0);
+    } elsif ($self->option('unconfigure')) {
+        # Sanity check the components passed to unconfigure
+        # There should be exactly one.
+        unless (scalar @ARGV) {
+            $self->error("unconfigure requires one component as argument");
+            $self->finish(-1);
+        }
+        unless (scalar @ARGV == 1) {
+            $self->error('more than one components cannot be unconfigured at a time');
+            $self->finish(-1);
+        }
+
+        $method = 'executeUnconfigComponent';
+        $action = 'unconfigure';
+    } else {
+        # Default ComponentProxyList method / action to run
+        $method = 'executeConfigComponents';
+        $action = 'configure';
+        $self->info('Ignoring broken pre/post dependencies (--nodeps flag set)')
+            if ($self->option('nodeps'));
+    }
+
+    # Set the application lock
+    $self->verbose('checking for ncm-ncd locks...');
+    unless ($self->option("ignorelock")) {
+        $self->lock() or $self->finish(-1);
+    }
+
+    # ignore-errors-from-dependencies implies nodeps and autodeps
+    if($self->option('ignore-errors-from-dependencies')) {
+        $self->{CONFIG}->set('nodeps', 1);
+        $self->{CONFIG}->set('autodeps', 1);
+    }
+
+    # remove duplicates and sort
+    my @component_names = sort(keys( %{ {map {$_ => 1} @ARGV} } ));
+    $self->verbose("Sorted unique components ", join(',', @component_names),
+                       " from commandline ", join(',', @ARGV));
+
+    # TODO: shouldn't --all and listed components conflict?
+    #       or should --all ignore any components from commandline?
+    unless ($self->option('all') || @component_names) {
+        $self->error("Please provide component names as parameters, or use --all");
+        $self->finish(-1);
+    }
+
+    my $skip = $self->option('skip');
+    if (defined $skip && !$self->option('all')) {
+        $self->error("--skip option requires --all option to be set");
+        $self->finish(-1);
+    }
+
+    unless (scalar(@component_names)) {
+        $self->info('No components specified, getting all active ones.');
+    }
+
+    my $compList = NCD::ComponentProxyList->new($self->getCCMConfig(), $skip, @component_names);
+
+    unless (defined $compList && defined($compList->{CLIST})) {
+        $ec->ignore_error();
+        $self->error("No components to dispatch.");
+        $self->finish(-1);
+    }
+
+    my @args = (
+        $self->option("pre-hook"),  $self->option("pre-hook-timeout"),
+        $self->option("post-hook"), $self->option("post-hook-timeout"),
+        );
+
+    if ($self->option("chroot")) {
+        chroot($self->option("chroot")) or die "Unable to chroot to ", $self->option("chroot");
+    }
+
+    if(! chdir($NCD_CHDIR)) {
+        $self->warn("Failed to change to directory $NCD_CHDIR");
+    };
+
+    my $ret = $compList->$method(@args);
+
+    return ($ret, $action);
+}
+
+# Create from a WARN_COMPS / ERR_COMPS hashref
+# Used in report_exit
+sub mk_msg
+{
+    my $href = shift;
+    my $txt = "";
+
+    foreach my $comp (sort keys %$href) {
+        $txt .= "$comp ($href->{$comp}) ";
+    }
+
+    chop($txt);
+    return $txt;
+};
+
+=item report_exit
+
+Given the result of the C<NCD::ComponentProxyList> action,
+report the succes and/or any errors and warnings and
+C<exit> with the appropriate exitcode.
+
+Takes a second argument C<action> to create appropriate message.
+
+=cut
+
+sub report_exit
+{
+    my ($self, $ret, $action) = @_;
+
+    my $report_method  = 'OK';
+    my $exitcode = 0;
+    if ($ret->{ERRORS}) {
+        $report_method  = 'error';
+        $exitcode = -1;
+    } elsif ($ret->{WARNINGS}) {
+        $report_method = 'warn';
+    }
+
+    $self->report();
+    $self->report('=========================================================');
+    $self->report();
+
+
+    my $methodmsg = $action;
+    $methodmsg =~ s/e$/ing/;
+
+    if ($ret->{ERRORS}) {
+        $self->info("Errors while ${methodmsg}ing ", mk_msg($ret->{ERR_COMPS}));
+    }
+
+    if ($ret->{WARNINGS}) {
+        $self->info("Warnings while ${methodmsg}ing ", mk_msg($ret->{WARN_COMPS}));
+    }
+
+    $self->$report_method($ret->{'ERRORS'}, ' errors, ', $ret->{'WARNINGS'}, ' warnings ', "executing $action");
+
+    $self->finish($exitcode);
+}
+
+=item main
+
+The CLI main method
+
+=cut
+
+sub main
+{
+    my ($self, $ec) = @_;
+
+    # exit if not ok to continue
+    $self->check_noquattor();
+
+    $self->report();
+    $self->log('------------------------------------------------------------');
+    $self->info('NCM-NCD version ', $self->version(),
+                ' started by ', $self->username(),
+                ' at: ', scalar(localtime));
+
+    # exits on failure
+    $self->check_options();
+
+    # add include directories to perl include search path
+    if ($self->option('include')) {
+        unshift(@INC, split(/:+/, $self->option('include')));
+    }
+
+    # set CCM Configuration
+    if ($self->setLockCCMConfig($self->option('cache_root'), $self->option('useprofile'))) {
+        # action exits when list option is used
+        my ($ret, $action) = $self->action($ec);
+        $self->report_exit($ret, $action);
+    } else{
+        $self->error("cannot get locked CCM configuration");
+        $self->finish(-1);
+    }
 }
 
 =pod
