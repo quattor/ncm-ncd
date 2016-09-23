@@ -90,11 +90,6 @@ sub app_options()
           HELP    => 'facility name for syslog',
           DEFAULT => 'local1' },
 
-        # TODO: unused -> remove
-        { NAME    => "template-path=s",
-          HELP    => 'store for Template Toolkit files',
-          DEFAULT => '/usr/share/templates/quattor' },
-
         { NAME    => "include=s",
           HELP    => 'a colon-seperated list of directories to include in search path' },
 
