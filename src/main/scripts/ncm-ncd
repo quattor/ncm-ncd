@@ -99,12 +99,6 @@ if ($this_app->option('check-noquattor') &&
 }
 
 
-# ensure allowed to run
-if ($>) {
-    $this_app->error("Sorry " . $this_app->username() . ", this program must be run by root");
-    exit(-1);
-}
-
 #
 # Handle signals properly
 #
