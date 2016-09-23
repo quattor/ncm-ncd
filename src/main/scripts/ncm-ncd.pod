@@ -51,7 +51,8 @@ name - active? - installed?
 
 =item --configure
 
-run the 'configure' method for <component1,2..> (default option). For running configure on all components, use --configure --all.
+Run the 'configure' method for <component1 component2 ...> (default option).
+For running configure on all components, use --configure --all.
 
 =item --all
 
@@ -59,24 +60,24 @@ See above. Run --configure --all to run configure on all components.
 
 =item --skip <component>
 
-skip one component (only to be used with --all)
+Skip one component (only to be used with --all)
 
 =item --unconfigure
 
-run the 'unconfigure' method for <component>. Only one component can
+Run the 'unconfigure' method for <component>. Only one component can
 be unconfigured at a time.
 
 =item --logdir <dir>
 
-directory where to place ncm-ncd and component log files
+Directory where to place ncm-ncd and component log files
 
 =item --retries <n>
 
-try 'n' times if locked (another ncm-ncd instance is running).
+Try 'n' times if locked (another ncm-ncd instance is running).
 
 =item --state <dir>
 
-directory in which to find state files. On conclusion of any component
+Directory in which to find state files. On conclusion of any component
 configuration, if the configuration was successful then the component
 file will be deleted from this state directory. If a component
 produces errors, then the component file will contain the number of errors.
@@ -89,11 +90,11 @@ no state files will be maintained.
 
 =item --timeout <n>
 
-wait a maximum of 'n' seconds between retries.
+Wait a maximum of 'n' seconds between retries.
 
 =item --useprofile <profile_id>
 
-use <profile_id> as NVA-API configuration profile ID (default: latest)
+Use <profile_id> as NVA-API configuration profile ID (default: latest)
 
 =item --cache_root <directory>
 
@@ -101,7 +102,7 @@ CCM cache root directory (optional, otherwise CCM default taken)
 
 =item --multilog
 
-use separate (per component) log files in log directory
+Use separate (per component) log files in log directory
 
 =item --pre-hook
 
