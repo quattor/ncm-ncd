@@ -139,7 +139,7 @@ sub run_all_components
         # This covers the case where a component in NAMES is a pre/post dependency of another component
         # TODO: what with --all : are all components requested?
         my $is_requested = (grep {$_ eq $name} @{$self->{NAMES}}) ? 1 : 0;
-        $self->verbose("$name is ", ($is_requested ? "" : "not")," a requested component");
+        $self->verbose("$name is ", ($is_requested ? "" : "not "),"a requested component");
 
         # if downgrade_dep_errors, errors for this component are not global errors, but become warnings
         # TODO only if this component is not a predependency of any of the requested components
@@ -337,14 +337,14 @@ sub set_state
         # calling close here will not update timestamp in case of same state
         # so the timestamp will be of first failure with this message, not the last
         # TODO: ok or not?
-        my $changed = $fh->close() ? "" : "not";
+        my $changed = $fh->close();
 
         my $err = $ec->error();
         if(defined($err)) {
             $ec->ignore_error();
             $self->warn("failed to write state for component $comp file $file: ".$err->reason());
         } else {
-            $self->verbose("state for component $comp $file $changed changed.");
+            $self->verbose("state for component $comp $file ",  ($changed ? "" : "not "), "changed.");
         }
     } else {
         $self->debug(2, "No statefile to set for component $comp (msg: $msg)");
