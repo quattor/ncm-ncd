@@ -545,12 +545,12 @@ sub missing_deps
     if(!$autodeps) {
         if ($nodeps) {
             # no warning here, nodeps=1
-            $self->verbose("Not satifying dependencies $deps_txt (nodeps=1/autodeps=0)");
+            $self->verbose("Not satisfying dependencies $deps_txt (nodeps=1/autodeps=0)");
             # return empty list to distinguish from undef for unittesting
             @deps = ();
         } else {
             $ec->ignore_error();
-            $self->warn("Not satifying dependencies $deps_txt");
+            $self->warn("Not satisfying dependencies $deps_txt");
             return;
         }
     }
