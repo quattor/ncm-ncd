@@ -1,9 +1,10 @@
 #${PMpre} NCM::Component${PMpost}
 
-use LC::Exception qw (SUCCESS throw_error);
+use CAF::Object qw (SUCCESS throw_error);
 use LC::Sysinfo;
 use CAF::History qw($IDX);
 use CAF::Reporter qw($HISTORY);
+use EDG::WP4::CCM::Path 16.8.0;
 use parent qw(Exporter CAF::Object);
 
 our ($this_app, @EXPORT, $NoAction, $SYSNAME, $SYSVERS);
@@ -100,32 +101,30 @@ sub prefix
 }
 
 
-=item unescape($string): $string
+=item unescape
 
-Returns the unescaped version of the string provided as parameter (as escaped by using the corresponding PAN function).
+Returns the unescaped version of the string provided as argument
+(using the C<<EDG::WP4::CCM::Path::unescape>> function).
 
 =cut
 
 sub unescape
 {
     my ($self, $str) = @_;
-
-    $str =~ s!(_[0-9a-f]{2})!sprintf("%c",hex($1))!eg;
-    return $str;
+    return EDG::WP4::CCM::Path::unescape($str);
 }
 
-=item escape($string): $string
+=item escape
 
-Returns the escaped version of the string provided as parameter (similar to the corresponding PAN function)
+Returns the escaped version of the string provided as argument
+(using the C<<EDG::WP4::CCM::Path::escape>> function).
 
 =cut
 
 sub escape
 {
     my ($self, $str) = @_;
-
-    $str =~ s/(^[0-9]|[^a-zA-Z0-9])/sprintf("_%lx", ord($1))/eg;
-    return $str;
+    return EDG::WP4::CCM::Path::escape($str);
 }
 
 
