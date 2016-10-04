@@ -36,7 +36,7 @@ $this_app = NCD::CLI->new(@baseopts);
 isa_ok($this_app, 'NCD::CLI', 'NCD::CLI created (for root user)');
 
 my @allopts = map {$_->{NAME}} @{$this_app->app_options()};
-is(scalar @allopts, 31, "expected number of options");
+is(scalar @allopts, 32, "expected number of options");
 
 
 my $reportcomps;

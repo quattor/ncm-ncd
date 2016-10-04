@@ -158,7 +158,7 @@ is_deeply(bash_split_opts('_quattor_ncm_ncd_default_options'),
           \@CAF_OPTIONS,
           "_quattor_ncm_ncd_default_options");
 
-Readonly::Array my @OPTIONS => qw(all allowbrokencomps autodeps cache_root cfgfile check-noquattor chroot configure facility force-quattor forcelock history history-instances ignore-errors-from-dependencies ignorelock include list logdir multilog noaction nodeps post-hook post-hook-timeout pre-hook pre-hook-timeout retries skip state timeout unconfigure useprofile);
+Readonly::Array my @OPTIONS => qw(all allowbrokencomps autodeps cache_root cfgfile check-noquattor chroot configure facility force-quattor forcelock history history-instances ignore-errors-from-dependencies ignorelock include list logdir logpid multilog noaction nodeps post-hook post-hook-timeout pre-hook pre-hook-timeout retries skip state timeout unconfigure useprofile);
 
 is_deeply(bash_split_opts('_quattor_ncm_ncd_options'),
           \@OPTIONS,

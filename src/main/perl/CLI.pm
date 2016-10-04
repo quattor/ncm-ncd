@@ -53,6 +53,10 @@ sub app_options()
           HELP    => "log directory to use for log files (application and each component in case of multilog) (default $NCD_LOGDIR)",
           DEFAULT => $NCD_LOGDIR },
 
+        { NAME    => 'logpid',
+          HELP    => "Add process ID to the log messages (disabled by default)",
+          DEFAULT => 0 },
+
         { NAME    => 'cache_root:s',
           HELP    => 'CCM cache root directory (optional, otherwise CCM default taken)' },
 
@@ -293,7 +297,13 @@ sub _initialize
 
     $self->{NCD_LOGFILE} = $self->option("logdir") . '/ncd.log';
 
-    return if(! $self->init_logfile($self->{NCD_LOGFILE}, 'at'));
+    # Defaults: append to logfile, add timestamp
+    my $logopts = 'at';
+    if ($self->option('logpid')) {
+        $logopts .= 'p';
+    }
+
+    return if(! $self->init_logfile($self->{NCD_LOGFILE}, $logopts));
 
     # Legacy LOG attibute
     $self->{LOG} = $self->{$LOGFILE};
