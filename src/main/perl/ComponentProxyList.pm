@@ -216,14 +216,17 @@ sub executeConfigComponents
     $self->info("executing configure on components....");
     $self->report();
 
+    my $sortedList = $self->_sortComponents($self->{CLIST});
+
     my $global_status = {
-        'ERRORS'   => 0,
-        'WARNINGS' => 0
+        ERRORS   => 0,
+        WARNINGS => 0,
+        # The names of the components on order of execution
+        CLIST => [map({name => $_->name()}, @$sortedList)],
     };
 
-    my $sortedList = $self->_sortComponents($self->{'CLIST'});
-
-    my $pre_input = {'components' => [map({name => $_->name()}, @$sortedList)]};
+    # Make a copy of the global_status CLIST
+    my $pre_input = {'components' => [@{$global_status->{CLIST}}]};
 
     if (!defined($sortedList)) {
         $self->error("cannot sort components according to dependencies");

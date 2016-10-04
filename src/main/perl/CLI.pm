@@ -468,14 +468,20 @@ sub action
 }
 
 # Create from a WARN_COMPS / ERR_COMPS hashref
+# clist is optional (pre)ordered list of component names
 # Used in report_exit
 sub mk_msg
 {
-    my $href = shift;
+    my ($href, $clist) = @_;
     my $txt = "";
 
+    my %clist_hash = map {$_ => 1} @$clist;
+    foreach my $comp (@$clist) {
+        $txt .= "$comp ($href->{$comp}) " if exists($href->{$comp});
+    };
+
     foreach my $comp (sort keys %$href) {
-        $txt .= "$comp ($href->{$comp}) ";
+        $txt .= "$comp ($href->{$comp}) " if ! exists($clist_hash{$comp});
     }
 
     chop($txt);
@@ -514,11 +520,11 @@ sub report_exit
     $methodmsg =~ s/e$/ing/;
 
     if ($ret->{ERRORS}) {
-        $self->info("Errors while ${methodmsg}ing ", mk_msg($ret->{ERR_COMPS}));
+        $self->info("Errors while ${methodmsg}ing ", mk_msg($ret->{ERR_COMPS}, $ret->{CLIST}));
     }
 
     if ($ret->{WARNINGS}) {
-        $self->info("Warnings while ${methodmsg}ing ", mk_msg($ret->{WARN_COMPS}));
+        $self->info("Warnings while ${methodmsg}ing ", mk_msg($ret->{WARN_COMPS}, $ret->{CLIST}));
     }
 
     $self->$report_method($ret->{'ERRORS'}, ' errors, ', $ret->{'WARNINGS'}, ' warnings ', "executing $action");
