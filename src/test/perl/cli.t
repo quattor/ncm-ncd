@@ -49,4 +49,12 @@ eval {$this_app->main($ec);};
 like($@, qr{^exit 0 at}, "exit called on --list with code 0");
 is_deeply($reportcomps, [qw(bar foo)], "reportComponents called with --list acts on correct list");
 
+is(NCD::CLI::mk_msg({a => 1, b => 2, c => 3, d => 4}),
+   "a (1) b (2) c (3) d (4)",
+   "mk_msg makes message with sorted components");
+
+is(NCD::CLI::mk_msg({a => 1, b => 2, c => 3, d => 4}, [qw(c a)]),
+   "c (3) a (1) b (2) d (4)",
+   "mk_msg makes message with presorted clist");
+
 done_testing();
