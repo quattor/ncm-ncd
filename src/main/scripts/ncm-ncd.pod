@@ -71,6 +71,10 @@ be unconfigured at a time.
 
 Directory where to place ncm-ncd and component log files
 
+=item --logpid
+
+Add process ID to the log messages (disabled by default).
+
 =item --retries <n>
 
 Try 'n' times if locked (another ncm-ncd instance is running).
