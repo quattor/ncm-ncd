@@ -5,6 +5,11 @@ use warnings;
 
 use version;
 
+BEGIN {
+    # Insert something in the environment
+    $ENV{TEST_COMPONENTPROXY} = 'a test';
+}
+
 use LC::Exception;
 use parent 'NCM::Component';
 

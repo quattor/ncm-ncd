@@ -13,8 +13,12 @@ use Test::MockModule;
 use Cwd;
 
 my $logdir;
+my %ORIG_ENV;
 
 BEGIN {
+    # Pick it up here, after Test::Quattor is loaded
+    %ORIG_ENV = %ENV;
+
     $logdir = getcwd()."/target";
     use CAF::Application;
     our $this_app = CAF::Application->new('app');
@@ -28,8 +32,11 @@ BEGIN {
     $this_app->{CONFIG}->set('history', 1);
 }
 
-my $mock = Test::MockModule->new('NCD::ComponentProxy');
+# Sanity check of the environment we run the tests in
+# The idea is that loading the foo component sets this variable
+ok(! exists($ENV{TEST_COMPONENTPROXY}), 'ENV variable set by component foo does not exist');
 
+my $mock = Test::MockModule->new('NCD::ComponentProxy');
 
 my $error = 0;
 my $lasterror;
@@ -44,6 +51,8 @@ my $cfg = get_config_for_profile("component-execute");
 
 my $cmp = NCD::ComponentProxy->new("foo", $cfg);
 isa_ok($cmp, "NCD::ComponentProxy", "Active component foo is loaded");
+
+is_deeply(\%ENV, \%ORIG_ENV, "initialisation of the Proxy does not modify environment");
 
 # It is in INC via prove commandline
 my $incpath = getcwd()."/src/test/perl";
@@ -69,11 +78,16 @@ isa_ok($component, 'NCM::Component::foo',
        '_load returns NCM::Component::foo instance');
 ok(! defined($component->{ACTIVE_CONFIG}), "no ACTIVE_CONFIG after load");
 
+is($ENV{TEST_COMPONENTPROXY}, 'a test', 'ENV variable set by component foo correct after load');
+delete $ENV{TEST_COMPONENTPROXY};
+
 # _version_check fails
 $error = 0;
 $mock->mock('_version_check', sub { return undef;});
 ok(! defined($cmp->_execute('Configure')), "_execute fails with undef on failed _version_check");
 is($error, 0, "_execute reports no error on failed _version_check (assumes this is done by _version_check itself)");
+
+is_deeply(\%ENV, \%ORIG_ENV, "failures in _execute do not modify environment");
 
 # _version_check always ok from now on
 $mock->mock('_version_check', 1);
@@ -97,6 +111,8 @@ isa_ok($component, 'NCM::Component::foo', '_load from Configure NCM::Component::
 is($component->{_config}, $cfg, "configuration instance passed during ComponentProxy init is passed to component foo Configure");
 is($component->{ACTIVE_CONFIG}, $cfg, "configuration instance set as ACTIVE_CONFIG by ComponentProxy");
 is($component->{_active_config}, $cfg, "configuration instance set as ACTIVE_CONFIG before Configure was called");
+
+is_deeply(\%ENV, \%ORIG_ENV, "_execute does not modify environment");
 
 # TODO: test noaction
 # TODO: test errors/warnings
