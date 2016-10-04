@@ -174,10 +174,11 @@ sub run_all_components
                 if ($ret->{'ERRORS'}) {
                      if ($downgrade_dep_errors) {
                          # Convert errors in warnings
-                         # TODO do we set the state to failed?
+                         # Clear the state (treat as regular warning)
                          $self->warn("Errors from $name are downgraded to warnings (downgrade_dep_errors is set). ",
-                                     "State is not cleared (as something went wrong), but also not set.");
+                                     "State is cleared");
                          $ret->{'WARNINGS'} += $ret->{'ERRORS'};
+                         $self->clear_state($name);
                     } else {
                         $status->{ERR_COMPS}->{$name} = $ret->{ERRORS};
                         $self->_set_state($name, $ret->{ERRORS});
