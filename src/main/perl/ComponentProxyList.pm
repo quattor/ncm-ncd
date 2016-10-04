@@ -687,14 +687,10 @@ sub _initialize
     $self->{CCM_CONFIG} = $config;
     $self->{SKIP}       = _parse_skip_args($skip);
     $self->{NAMES}      = \@names;
-    $self->{CLIST}      = [];
 
-    my $res = $self->_getComponents();
-    return $res if (defined($res));
+    $self->_getComponents();
 
-    $self->{CLIST} = undef;
     return SUCCESS;
-
 }
 
 =item _set_state
