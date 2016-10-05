@@ -2,7 +2,7 @@
 
 use parent qw(CAF::Application CAF::Reporter);
 
-use CAF::Reporter qw($LOGFILE);
+use CAF::Reporter 16.8.1 qw($LOGFILE);
 use CAF::Object qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Fetch qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
@@ -312,6 +312,9 @@ sub _initialize
     $self->{REPORTED_EVENTS} = [];
     $self->init_history($self->option("history-instances"))
         if $self->option("history");
+
+    # Setup the verbose_logfile option
+    $self->setup_reporter(undef, undef, undef, undef, 1);
 
     return SUCCESS;
 }

@@ -6,6 +6,7 @@ use Test::Quattor::ProfileCache qw(prepare_profile_cache);
 use NCD::CLI;
 use Test::MockModule;
 use LC::Exception;
+use CAF::Reporter qw($VERBOSE_LOGFILE);
 
 my $mock_cli = Test::MockModule->new('NCD::CLI');
 my $mock_cpl = Test::MockModule->new('NCD::ComponentProxyList');
@@ -34,10 +35,11 @@ like($@, qr{^exit -1 at}, "exit called on wrong user failure with code");
 $mock_cli->mock('_get_uid', 0);
 $this_app = NCD::CLI->new(@baseopts);
 isa_ok($this_app, 'NCD::CLI', 'NCD::CLI created (for root user)');
+# ugly, but no other way
+is($this_app->_rep_setup()->{$VERBOSE_LOGFILE}, 1, "verbose_logfile is enabled");
 
 my @allopts = map {$_->{NAME}} @{$this_app->app_options()};
 is(scalar @allopts, 32, "expected number of options");
-
 
 my $reportcomps;
 $mock_cpl->mock('reportComponents', sub {my $self = shift; $reportcomps = [map {$_->name()} @{$self->{CLIST}}];});
