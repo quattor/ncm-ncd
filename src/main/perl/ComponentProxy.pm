@@ -9,6 +9,7 @@ use parent qw(CAF::ReporterMany CAF::Object);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Path;
 use LC::Check;
+use Cwd qw(getcwd);
 
 use File::Path;
 
@@ -420,6 +421,32 @@ sub _execute
     my ($self, $method) = @_;
 
     my $name = $self->name();
+
+    # Save environment to restore
+    my %ENV_ORIG = %ENV;
+    my %SIG_ORIG = %SIG;
+    my $pwd = getcwd();
+
+    my $res = $self->_execute_dirty($method);
+
+    # restore original env and signals
+    %ENV = %ENV_ORIG;
+    %SIG = %SIG_ORIG;
+
+    if (chdir($pwd)) {
+        $self->debug(1, "Changed back to $pwd after executing component $name method $method");
+    } else {
+        $self->warn("Fail to change back to $pwd executing component $name method $method");
+    };
+
+    return $res;
+};
+
+sub _execute_dirty
+{
+    my ($self, $method) = @_;
+
+    my $name = $self->name();
     my $mod = $self->module();
 
     # load the component
@@ -471,15 +498,11 @@ sub _execute
     }
 
     # run from /tmp
-    # TODO: chdir back to pwd?
     if (chdir($RUN_FROM)) {
         $self->debug(1, "Changed to $RUN_FROM before executing component $name method $method");
     } else {
         $self->warn("Fail to change to $RUN_FROM before executing component $name method $method");
     };
-
-    my %ENV_ORIG = %ENV;
-    my %SIG_ORIG = %SIG;
 
     # USR1 reports current active component / method
     $SIG{'USR1'} = sub {
@@ -494,11 +517,10 @@ sub _execute
     # TODO: return value $result is unused
     local $@;
     my $result;
-    eval "\$result=\$component->$method(\$self->{'CONFIG'});";
-
-    # restore original env and signals
-    %ENV = %ENV_ORIG;
-    %SIG = %SIG_ORIG;
+    eval {
+        $component->set_active_config($self->{CONFIG});
+        $result = $component->$method($self->{CONFIG});
+    };
 
     my $formatter = $this_app->option('verbose') || $this_app->option('debug')
         ? "format_long" : "format_short";

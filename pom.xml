@@ -183,6 +183,7 @@
                   <directory>src/main/perl</directory>
                   <filtering>true</filtering>
                   <includes>
+                    <include>CLI.pm</include>
                     <include>ComponentProxy.pm</include>
                     <include>ComponentProxyList.pm</include>
                   </includes>

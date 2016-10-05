@@ -9,7 +9,7 @@ BEGIN {
 
 use Test::More;
 use Test::Quattor qw(component-proxy-list);
-use NCD::ComponentProxyList;
+use NCD::ComponentProxyList qw(get_statefile set_state); # Test the imports
 use CAF::Object;
 use Test::MockModule;
 use Cwd;
@@ -283,7 +283,9 @@ ok(command_history_ok(["/test/pre", "/test/post"]),
 
 =head1
 
-get_statefile /set_state / clear_state
+get_statefile / set_state (via _set_state method) / clear_state
+
+Pass cpl instance as logger instance for function
 
 =cut
 
@@ -294,7 +296,7 @@ my $mytestcomp = "mytestcomponent";
 my $relpath = 'target/statefiles';
 ok(! -d $relpath, "No statesfiles dir exists ($relpath)");
 $this_app->{CONFIG}->set('state', $relpath);
-ok(! defined($cpl->get_statefile($mytestcomp)),
+ok(! defined(get_statefile($cpl, $mytestcomp, $this_app->option('state'))),
    "get_statefile returns undef in case of failure (relpath instead of abspath)");
 ok(! -d $relpath, "states dir not created in case of failure");
 
@@ -302,9 +304,9 @@ my $abspath = getcwd()."/$relpath";
 my $absstatefile = "$abspath/$mytestcomp";
 ok(! -d $abspath, "No statesfiles dir exists ($abspath)");
 $this_app->{CONFIG}->set('state', $abspath);
-is($cpl->get_statefile($mytestcomp),
+is(get_statefile($cpl, $mytestcomp, $this_app->option('state')),
    $absstatefile,
-   "get_sattefile returns expected statefile $absstatefile");
+   "get_statefile returns expected statefile $absstatefile");
 ok(-d $abspath, "states dir created in case of success");
 
 # test noaction
@@ -312,7 +314,7 @@ $this_app->{CONFIG}->set('noaction', 1);
 
 my $statemessage = "my message";
 
-ok(! defined($cpl->set_state($mytestcomp, $statemessage)),
+ok(! defined($cpl->_set_state($mytestcomp, $statemessage)),
    "set_state returns undef with noaction option");
 
 ok(! defined($cpl->clear_state($mytestcomp)),
@@ -326,7 +328,7 @@ $this_app->{CONFIG}->set('noaction', 0);
 # close is used in set_state
 set_caf_file_close_diff(1);
 
-ok($cpl->set_state($mytestcomp, $statemessage),
+ok($cpl->_set_state($mytestcomp, $statemessage),
    "set_state returns 1 without noaction option");
 
 my $statefh = get_file($absstatefile);
