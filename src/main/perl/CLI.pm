@@ -434,10 +434,13 @@ sub action
     $self->verbose("Sorted unique components ", join(',', @component_names),
                        " from commandline ", join(',', @ARGV));
 
-    # TODO: shouldn't --all and listed components conflict?
-    #       or should --all ignore any components from commandline?
     unless ($self->option('all') || @component_names) {
         $self->error("Please provide component names as parameters, or use --all");
+        $self->finish(-1);
+    }
+
+    if ($self->option('all') && @component_names) {
+        $self->error("Cannot provide component names as parameters and use --all");
         $self->finish(-1);
     }
 
