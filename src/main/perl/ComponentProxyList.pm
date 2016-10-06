@@ -139,7 +139,7 @@ sub run_all_components
         # This covers the case where a component in NAMES is a pre/post dependency of another component
         # TODO: what with --all : are all components requested?
         my $is_requested = (grep {$_ eq $name} @{$self->{NAMES}}) ? 1 : 0;
-        $self->verbose("$name is ", ($is_requested ? "" : "not")," a requested compoment");
+        $self->verbose("$name is ", ($is_requested ? "" : "not")," a requested component");
 
         # if downgrade_dep_errors, errors for this component are not global errors, but become warnings
         # TODO only if this component is not a predependency of any of the requested components
