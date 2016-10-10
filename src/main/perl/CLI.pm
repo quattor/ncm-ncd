@@ -316,6 +316,11 @@ sub _initialize
     # Setup the verbose_logfile option
     $self->setup_reporter(undef, undef, undef, undef, 1);
 
+    # Log all warnings
+    $SIG{__WARN__} = sub {
+        $self->verbose("Perl warning: $_[0]");
+    };
+
     return SUCCESS;
 }
 

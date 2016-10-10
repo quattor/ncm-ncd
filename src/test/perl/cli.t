@@ -59,4 +59,18 @@ is(NCD::CLI::mk_msg({a => 1, b => 2, c => 3, d => 4}, [qw(c a)]),
    "c (3) a (1) b (2) d (4)",
    "mk_msg makes message with presorted clist");
 
+# CLI redirects all perl warnings to the verbose logger
+# This is done via global ENV
+my $verb;
+$mock_cli->mock('verbose', sub {
+    my $self = shift;
+    $verb = join(" ", @_);
+});
+$verb = undef;
+warn("Test NCD::CLI warning");
+like($verb, qr{Perl warning: Test NCD::CLI warning at src/test/perl/cli.t},
+   "perl warning logged verbose");
+$mock_cli->unmock('verbose');
+
+
 done_testing();
