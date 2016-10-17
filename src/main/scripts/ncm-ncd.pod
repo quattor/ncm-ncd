@@ -71,6 +71,29 @@ be unconfigured at a time.
 
 Directory where to place ncm-ncd and component log files
 
+=item --log_group_readable <groupname>
+
+Group readable logdir (value is the groupname).
+If set with valid groupname, the configured logdirectory
+will have its permissions set to 750 and the
+the groupname as group (still owned by root).
+
+Following standard UNIX ACL semantics, the C<log_group_readable> configuration
+option is not very useful if C<log_world_readable> is also true.
+
+=item --log_world_readable <0|1>
+
+World readable logdir flag (1/0). If true, the configured logdirectory
+will have its permissions set to 755. If false the permissions will be 700.
+
+These permissions will be set each time C<ncm-ncd> is run.
+
+Following standard UNIX ACL semantics, the C<log_group_readable> configuration
+option is not very useful if C<log_world_readable> is also true.
+
+The use of C<log_world_readable> is not recommended
+if profiles contain sensitive or private information.
+
 =item --logpid
 
 Add process ID to the log messages (disabled by default).

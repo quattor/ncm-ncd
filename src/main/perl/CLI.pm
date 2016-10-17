@@ -1,12 +1,13 @@
 #${PMpre} NCD::CLI${PMpost}
 
-use parent qw(CAF::Application CAF::Reporter);
+use parent qw(CAF::Application CAF::Reporter CAF::Path);
 
 use CAF::Reporter 16.8.1 qw($LOGFILE);
+use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 use CAF::Object qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Fetch qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
-use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
+use EDG::WP4::CCM::Fetch::ProfileCache qw(GetPermissions);
 
 use Readonly;
 
@@ -52,6 +53,13 @@ sub app_options()
         { NAME    => 'logdir=s',
           HELP    => "log directory to use for log files (application and each component in case of multilog) (default $NCD_LOGDIR)",
           DEFAULT => $NCD_LOGDIR },
+
+        { NAME    => 'log_group_readable=s',
+          HELP    => 'Group readable logdir (value is the groupname)' },
+
+        { NAME    => 'log_world_readable=i',
+          HELP    => 'World readable logdir flag 1/0',
+          DEFAULT => 1 },
 
         { NAME    => 'logpid',
           HELP    => "Add process ID to the log messages (disabled by default)",
@@ -294,6 +302,12 @@ sub _initialize
         $self->error("Sorry " . $self->username() . ", this program must be run by root");
         $self->finish(-1);
     }
+
+    my ($dopts, $fopts, $mask) = GetPermissions($self,
+                                                $self->option('log_group_readable'),
+                                                $self->option('log_world_readable'));
+    # Set logdir permissions
+    $self->directory($self->option('logdir'), %$dopts);
 
     $self->{NCD_LOGFILE} = $self->option("logdir") . '/ncd.log';
 
