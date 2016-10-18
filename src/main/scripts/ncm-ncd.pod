@@ -98,6 +98,10 @@ if profiles contain sensitive or private information.
 
 Add process ID to the log messages (disabled by default).
 
+=item --verbose_logfile <0|1>
+
+Report with verbose loglevel to the logfile.
+
 =item --retries <n>
 
 Try 'n' times if locked (another ncm-ncd instance is running).

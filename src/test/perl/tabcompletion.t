@@ -165,7 +165,7 @@ check-noquattor chroot configure facility force-quattor forcelock history histor
 ignore-errors-from-dependencies ignorelock include list
 log_group_readable log_world_readable logdir logpid multilog noaction nodeps
 post-hook post-hook-timeout pre-hook pre-hook-timeout retries skip state timeout
-unconfigure useprofile);
+unconfigure useprofile verbose_logfile);
 
 is_deeply(bash_split_opts('_quattor_ncm_ncd_options'),
           \@OPTIONS,

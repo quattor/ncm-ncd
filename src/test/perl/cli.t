@@ -45,10 +45,12 @@ like($@, qr{^exit -1 at}, "exit called on wrong user failure with code");
 
 $getperms = undef;
 reset_caf_path();
+CAF::Reporter::init_reporter();
 $mock_cli->mock('_get_uid', 0);
 $this_app = NCD::CLI->new(@baseopts,
                           '--log_group_readable', 'mygroup',
-                          '--log_world_readable', 0);
+                          '--log_world_readable', 0,
+                          '--verbose_logfile', 1);
 isa_ok($this_app, 'NCD::CLI', 'NCD::CLI created (for root user)');
 is_deeply($getperms, [qw(mygroup 0)], "GetPermissions called with log_group/world_readable options");
 is_deeply($Test::Quattor::caf_path->{directory},
@@ -58,7 +60,7 @@ is_deeply($Test::Quattor::caf_path->{directory},
 is($this_app->_rep_setup()->{$VERBOSE_LOGFILE}, 1, "verbose_logfile is enabled");
 
 my @allopts = map {$_->{NAME}} @{$this_app->app_options()};
-is(scalar @allopts, 34, "expected number of options");
+is(scalar @allopts, 35, "expected number of options");
 
 my $reportcomps;
 $mock_cpl->mock('reportComponents', sub {my $self = shift; $reportcomps = [map {$_->name()} @{$self->{CLIST}}];});
@@ -66,10 +68,13 @@ $mock_cpl->mock('reportComponents', sub {my $self = shift; $reportcomps = [map {
 $@ = undef;
 $getperms = undef;
 reset_caf_path();
+CAF::Reporter::init_reporter();
 $this_app = NCD::CLI->new(@baseopts, '--list');
 isa_ok($this_app, 'NCD::CLI', 'NCD::CLI created (for root user)');
 # Change previous test when changing the default (so the opposite is tested)
 is_deeply($getperms, [undef, 1], "GetPermissions called with default log_group/world_readable options (undef/0)");
+is($this_app->_rep_setup()->{$VERBOSE_LOGFILE}, 0, "verbose_logfile is disabled by default");
+
 eval {$this_app->main($ec);};
 like($@, qr{^exit 0 at}, "exit called on --list with code 0");
 is_deeply($reportcomps, [qw(bar foo)], "reportComponents called with --list acts on correct list");

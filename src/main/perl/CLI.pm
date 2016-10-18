@@ -61,6 +61,10 @@ sub app_options()
           HELP    => 'World readable logdir flag 1/0',
           DEFAULT => 1 },
 
+        { NAME    => 'verbose_logfile',
+          HELP    => 'Report with verbose loglevel to the logfile',
+          DEFAULT => 0 },
+
         { NAME    => 'logpid',
           HELP    => "Add process ID to the log messages (disabled by default)",
           DEFAULT => 0 },
@@ -328,7 +332,8 @@ sub _initialize
         if $self->option("history");
 
     # Setup the verbose_logfile option
-    $self->setup_reporter(undef, undef, undef, undef, 1);
+    $self->setup_reporter(undef, undef, undef, undef, 1)
+        if $self->option("verbose_logfile");
 
     # Log all warnings
     $SIG{__WARN__} = sub {
