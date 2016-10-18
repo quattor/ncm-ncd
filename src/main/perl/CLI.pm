@@ -1,12 +1,13 @@
 #${PMpre} NCD::CLI${PMpost}
 
-use parent qw(CAF::Application CAF::Reporter);
+use parent qw(CAF::Application CAF::Reporter CAF::Path);
 
-use CAF::Reporter qw($LOGFILE);
+use CAF::Reporter 16.8.1 qw($LOGFILE);
+use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 use CAF::Object qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Fetch qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
-use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
+use EDG::WP4::CCM::Fetch::ProfileCache qw(GetPermissions);
 
 use Readonly;
 
@@ -52,6 +53,21 @@ sub app_options()
         { NAME    => 'logdir=s',
           HELP    => "log directory to use for log files (application and each component in case of multilog) (default $NCD_LOGDIR)",
           DEFAULT => $NCD_LOGDIR },
+
+        { NAME    => 'log_group_readable=s',
+          HELP    => 'Group readable logdir (value is the groupname)' },
+
+        { NAME    => 'log_world_readable=i',
+          HELP    => 'World readable logdir flag 1/0',
+          DEFAULT => 1 },
+
+        { NAME    => 'verbose_logfile',
+          HELP    => 'Report with verbose loglevel to the logfile',
+          DEFAULT => 0 },
+
+        { NAME    => 'logpid',
+          HELP    => "Add process ID to the log messages (disabled by default)",
+          DEFAULT => 0 },
 
         { NAME    => 'cache_root:s',
           HELP    => 'CCM cache root directory (optional, otherwise CCM default taken)' },
@@ -291,9 +307,21 @@ sub _initialize
         $self->finish(-1);
     }
 
+    my ($dopts, $fopts, $mask) = GetPermissions($self,
+                                                $self->option('log_group_readable'),
+                                                $self->option('log_world_readable'));
+    # Set logdir permissions
+    $self->directory($self->option('logdir'), %$dopts);
+
     $self->{NCD_LOGFILE} = $self->option("logdir") . '/ncd.log';
 
-    return if(! $self->init_logfile($self->{NCD_LOGFILE}, 'at'));
+    # Defaults: append to logfile, add timestamp
+    my $logopts = 'at';
+    if ($self->option('logpid')) {
+        $logopts .= 'p';
+    }
+
+    return if(! $self->init_logfile($self->{NCD_LOGFILE}, $logopts));
 
     # Legacy LOG attibute
     $self->{LOG} = $self->{$LOGFILE};
@@ -302,6 +330,15 @@ sub _initialize
     $self->{REPORTED_EVENTS} = [];
     $self->init_history($self->option("history-instances"))
         if $self->option("history");
+
+    # Setup the verbose_logfile option
+    $self->setup_reporter(undef, undef, undef, undef, 1)
+        if $self->option("verbose_logfile");
+
+    # Log all warnings
+    $SIG{__WARN__} = sub {
+        $self->verbose("Perl warning: $_[0]");
+    };
 
     return SUCCESS;
 }
@@ -424,10 +461,13 @@ sub action
     $self->verbose("Sorted unique components ", join(',', @component_names),
                        " from commandline ", join(',', @ARGV));
 
-    # TODO: shouldn't --all and listed components conflict?
-    #       or should --all ignore any components from commandline?
     unless ($self->option('all') || @component_names) {
         $self->error("Please provide component names as parameters, or use --all");
+        $self->finish(-1);
+    }
+
+    if ($self->option('all') && @component_names) {
+        $self->error("Cannot provide component names as parameters and use --all");
         $self->finish(-1);
     }
 
@@ -468,14 +508,20 @@ sub action
 }
 
 # Create from a WARN_COMPS / ERR_COMPS hashref
+# clist is optional (pre)ordered list of component names
 # Used in report_exit
 sub mk_msg
 {
-    my $href = shift;
+    my ($href, $clist) = @_;
     my $txt = "";
 
+    my %clist_hash = map {$_ => 1} @$clist;
+    foreach my $comp (@$clist) {
+        $txt .= "$comp ($href->{$comp}) " if exists($href->{$comp});
+    };
+
     foreach my $comp (sort keys %$href) {
-        $txt .= "$comp ($href->{$comp}) ";
+        $txt .= "$comp ($href->{$comp}) " if ! exists($clist_hash{$comp});
     }
 
     chop($txt);
@@ -514,11 +560,11 @@ sub report_exit
     $methodmsg =~ s/e$/ing/;
 
     if ($ret->{ERRORS}) {
-        $self->info("Errors while ${methodmsg}ing ", mk_msg($ret->{ERR_COMPS}));
+        $self->info("Errors while ${methodmsg}ing ", mk_msg($ret->{ERR_COMPS}, $ret->{CLIST}));
     }
 
     if ($ret->{WARNINGS}) {
-        $self->info("Warnings while ${methodmsg}ing ", mk_msg($ret->{WARN_COMPS}));
+        $self->info("Warnings while ${methodmsg}ing ", mk_msg($ret->{WARN_COMPS}, $ret->{CLIST}));
     }
 
     $self->$report_method($ret->{'ERRORS'}, ' errors, ', $ret->{'WARNINGS'}, ' warnings ', "executing $action");

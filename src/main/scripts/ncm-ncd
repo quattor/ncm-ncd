@@ -12,8 +12,10 @@ BEGIN {
     unshift(@INC, '/usr/lib/perl');
 }
 
-# minimal Path
-$ENV{PATH} = join(":", qw(/bin /usr/bin /sbin /usr/sbin));
+# minimal ENV with minimal PATH
+%ENV = (
+    PATH => join(":", qw(/bin /usr/bin /sbin /usr/sbin)),
+);
 # fix umask
 umask (022);
 

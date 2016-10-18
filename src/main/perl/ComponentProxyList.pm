@@ -1,20 +1,14 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} NCD::ComponentProxyList${PMpost}
 
-package NCD::ComponentProxyList;
-
-use strict;
-use warnings;
-
-use LC::Exception qw (SUCCESS throw_error);
-use parent qw(CAF::ReporterMany CAF::Object);
+use CAF::Object qw (SUCCESS throw_error);
+use parent qw(CAF::ReporterMany CAF::Object Exporter);
 use NCD::ComponentProxy;
 use JSON::XS;
 use CAF::Process;
 use CAF::FileWriter;
 use File::Path qw(mkpath);
+
+our @EXPORT_OK = qw(get_statefile set_state);
 
 our $this_app;
 
@@ -139,7 +133,7 @@ sub run_all_components
         # This covers the case where a component in NAMES is a pre/post dependency of another component
         # TODO: what with --all : are all components requested?
         my $is_requested = (grep {$_ eq $name} @{$self->{NAMES}}) ? 1 : 0;
-        $self->verbose("$name is ", ($is_requested ? "" : "not")," a requested component");
+        $self->verbose("$name is ", ($is_requested ? "" : "not "),"a requested component");
 
         # if downgrade_dep_errors, errors for this component are not global errors, but become warnings
         # TODO only if this component is not a predependency of any of the requested components
@@ -165,14 +159,14 @@ sub run_all_components
             $self->error($err);
             $status->{'ERRORS'}++;
             $status->{ERR_COMPS}->{$name} = 1;
-            $self->set_state($name, $err);
+            $self->_set_state($name, $err);
         } else {
 
             # we set the state to "unknown" (in effect) just before we
             # run configure, so that the state will reflect that this component
             # has still not run to completion. All code-paths following this
             # MUST either set_state or clear_state.
-            $self->set_state($name, "");
+            $self->_set_state($name, "");
 
             my $ret = $comp->executeConfigure();
             if (defined($ret)) {
@@ -180,13 +174,14 @@ sub run_all_components
                 if ($ret->{'ERRORS'}) {
                      if ($downgrade_dep_errors) {
                          # Convert errors in warnings
-                         # TODO do we set the state to failed?
+                         # Clear the state (treat as regular warning)
                          $self->warn("Errors from $name are downgraded to warnings (downgrade_dep_errors is set). ",
-                                     "State is not cleared (as something went wrong), but also not set.");
+                                     "State is cleared");
                          $ret->{'WARNINGS'} += $ret->{'ERRORS'};
+                         $self->clear_state($name);
                     } else {
                         $status->{ERR_COMPS}->{$name} = $ret->{ERRORS};
-                        $self->set_state($name, $ret->{ERRORS});
+                        $self->_set_state($name, $ret->{ERRORS});
 
                         $status->{'ERRORS'} += $ret->{'ERRORS'};
                     }
@@ -204,7 +199,7 @@ sub run_all_components
                 $self->error($err);
                 $status->{'ERRORS'}++;
                 $status->{ERR_COMPS}->{$name} = 1;
-                $self->set_state($name, $err);
+                $self->_set_state($name, $err);
             }
         }
     }
@@ -221,14 +216,17 @@ sub executeConfigComponents
     $self->info("executing configure on components....");
     $self->report();
 
+    my $sortedList = $self->_sortComponents($self->{CLIST});
+
     my $global_status = {
-        'ERRORS'   => 0,
-        'WARNINGS' => 0
+        ERRORS   => 0,
+        WARNINGS => 0,
+        # The names of the components on order of execution
+        CLIST => [map({name => $_->name()}, @$sortedList)],
     };
 
-    my $sortedList = $self->_sortComponents($self->{'CLIST'});
-
-    my $pre_input = {'components' => [map({name => $_->name()}, @$sortedList)]};
+    # Make a copy of the global_status CLIST
+    my $pre_input = {'components' => [@{$global_status->{CLIST}}]};
 
     if (!defined($sortedList)) {
         $self->error("cannot sort components according to dependencies");
@@ -287,70 +285,6 @@ sub executeUnconfigComponent
     return \%global_status;
 }
 
-# Return the statefile filename for component C<comp> in the
-# statedir (set via state option). Return undef in case of problem.
-sub get_statefile
-{
-    my ($self, $comp) = @_;
-    my $statedir = $this_app->option('state');
-    if ($statedir) {
-        # remove trailing slashes
-        $statedir =~ s/\/+$//;
-
-        my $file = "$statedir/$comp";
-        if ($file =~ m{^(\/[^\|<>&]*)$}) {
-
-            # the state directory could be volatile
-            # only create after sanity/taint check
-            mkpath($statedir) unless -d $statedir;
-
-            # Must be an absolute path, no shell metacharacters
-            return $1;
-        } else {
-            $self->warn("state component $comp filename $file is inappropriate");
-
-            # Don't touch the state file
-            return undef;
-        }
-    } else {
-        $self->debug(2, "No state directory via state option set for component $comp");
-    }
-    return undef;
-}
-
-# Mark a component as failed within our state directory
-# (returns undef with noaction option, 1 otherwise)
-sub set_state
-{
-    my ($self, $comp, $msg) = @_;
-    if ($this_app->option('noaction')) {
-        $msg = "needing to run" if (!$msg);
-        $self->info("would mark state of component $comp as '$msg' (noaction set)");
-        return;
-    }
-
-    my $file = $self->get_statefile($comp);
-    if ($file) {
-        $self->verbose("set_state for component $comp $file (msg $msg)");
-        my $fh = CAF::FileWriter->new($file, log => $self);
-        print $fh "$msg\n";
-        # calling close here will not update timestamp in case of same state
-        # so the timestamp will be of first failure with this message, not the last
-        # TODO: ok or not?
-        my $changed = $fh->close() ? "" : "not";
-
-        my $err = $ec->error();
-        if(defined($err)) {
-            $ec->ignore_error();
-            $self->warn("failed to write state for component $comp file $file: ".$err->reason());
-        } else {
-            $self->verbose("state for component $comp $file $changed changed.");
-        }
-    } else {
-        $self->debug(2, "No statefile to set for component $comp (msg: $msg)");
-    }
-    return 1;
-}
 
 # Private wrapper around unlink for easy mocking in unittest
 # (it's not possible to redefine via CORE as it used in the test framework itself)
@@ -366,13 +300,12 @@ sub _unlink
 sub clear_state
 {
     my ($self, $comp) = @_;
-    if ($this_app->option('noaction')) {
-        $self->info("would mark state of component $comp as success (noaction set)");
-        return;
-    }
+    my $file = get_statefile($self, $comp, $this_app->option('state'));
 
-    my $file = $self->get_statefile($comp);
-    if ($file) {
+    if ($this_app->option('noaction')) {
+        $self->info("would mark state of component $comp as success and remove statefile $file (noaction set)");
+        return;
+    } elsif ($file) {
         $self->verbose("mark state of component $comp as success, removing statefile $file");
         $self->_unlink($file) or $self->warn("failed to clean state of component $comp $file: $!");
     } else {
@@ -616,12 +549,12 @@ sub missing_deps
     if(!$autodeps) {
         if ($nodeps) {
             # no warning here, nodeps=1
-            $self->verbose("Not satifying dependencies $deps_txt (nodeps=1/autodeps=0)");
+            $self->verbose("Not satisfying dependencies $deps_txt (nodeps=1/autodeps=0)");
             # return empty list to distinguish from undef for unittesting
             @deps = ();
         } else {
             $ec->ignore_error();
-            $self->warn("Not satifying dependencies $deps_txt");
+            $self->warn("Not satisfying dependencies $deps_txt");
             return;
         }
     }
@@ -758,15 +691,119 @@ sub _initialize
     $self->{CCM_CONFIG} = $config;
     $self->{SKIP}       = _parse_skip_args($skip);
     $self->{NAMES}      = \@names;
-    $self->{CLIST}      = [];
 
-    my $res = $self->_getComponents();
-    return $res if (defined($res));
+    $self->_getComponents();
 
-    $self->{CLIST} = undef;
     return SUCCESS;
-
 }
+
+=item _set_state
+
+Convenience method to wrap around C<set_state> function,
+passing C<noaction> and C<statedir> from current options
+and using C<self> as logger.
+
+=cut
+
+sub _set_state
+{
+    my ($self, $comp, $msg) = @_;
+
+    return set_state($self, $comp, $msg, $this_app->option('state'), $this_app->option('noaction'));
+}
+
+=pod
+
+=back
+
+=head2 Functions
+
+=over
+
+=item get_statefile
+
+Return the statefile filename for component C<comp> in the
+C<statedir>. Statedir is created if it doesn't exist previously
+Return undef in case of problem.
+
+First argument is a C<CAF::Reporter> instance for logging.
+
+=cut
+
+sub get_statefile
+{
+    my ($logger, $comp, $statedir) = @_;
+
+    if ($statedir) {
+        # remove trailing slashes
+        $statedir =~ s/\/+$//;
+
+        my $file = "$statedir/$comp";
+        if ($file =~ m{^(\/[^\|<>&]*)$}) {
+
+            # the state directory could be volatile
+            # only create after sanity/taint check
+            mkpath($statedir) unless -d $statedir;
+
+            # Must be an absolute path, no shell metacharacters
+            return $1;
+        } else {
+            $logger->warn("state component $comp filename $file is inappropriate");
+
+            # Don't touch the state file
+            return;
+        }
+    } else {
+        $logger->debug(2, "No state directory via state option set for component $comp");
+    }
+
+    return;
+}
+
+=item set_state
+
+Mark a component C<comp> as failed within our state directory
+by wrtiting message C<msg> to the statefile in C<statedir>.
+
+Returns undef with C<noaction> argument (from noaction option),
+1 otherwise.
+
+First argument is a C<CAF::Reporter> instance for logging.
+
+=cut
+
+sub set_state
+{
+    my ($logger, $comp, $msg, $statedir, $noaction) = @_;
+    if ($noaction) {
+        $msg = "needing to run" if (!$msg);
+        $logger->info("would mark state of component $comp as '$msg' (noaction set)");
+        return;
+    }
+
+    my $file = get_statefile($logger, $comp, $statedir);
+    if ($file) {
+        $logger->verbose("set_state for component $comp $file (msg $msg)");
+        my $fh = CAF::FileWriter->new($file, log => $logger);
+        print $fh "$msg\n";
+        # calling close here will not update timestamp in case of same state
+        # so the timestamp will be of first failure with this message, not the last
+        # TODO: ok or not?
+        my $changed = $fh->close();
+
+        my $err = $ec->error();
+        if(defined($err)) {
+            $ec->ignore_error();
+            $logger->warn("failed to write state for component $comp file $file: ".$err->reason());
+        } else {
+            $logger->verbose("state for component $comp $file ",  ($changed ? "" : "not "), "changed.");
+        }
+    } else {
+        $logger->debug(2, "No statefile to set for component $comp (msg: $msg)");
+    }
+    return 1;
+}
+
 
 =pod
 
