@@ -6,7 +6,7 @@ use CAF::Reporter 16.8.1 qw($LOGFILE);
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 use CAF::Object qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
-use EDG::WP4::CCM::Fetch qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
+use EDG::WP4::CCM::Fetch::Config 16.8.1 qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
 use EDG::WP4::CCM::Fetch::ProfileCache qw(GetPermissions);
 
 use Readonly;
