@@ -237,33 +237,6 @@ sub event_report
     return \@idxs;
 }
 
-
-=item add_files()
-
-Stores files that have been manipulated by this component
-
-=cut
-
-sub add_files
-{
-    my ($self, @files) = @_;
-
-    push(@{$self->{FILES}}, @files);
-}
-
-=item get_files(): ref to list of strings
-
-Returns a reference to the list of files manipulated by the component
-
-=cut
-
-sub get_files
-{
-    my $self = shift;
-
-    return $self->{FILES};
-}
-
 =back
 
 =head1 Pure virtual methods
@@ -325,7 +298,6 @@ sub _initialize
     $self->{NAME}=$name;
     $self->{ERRORS}=0;
     $self->{WARNINGS}=0;
-    $self->{FILES} = [];
     $self->{log} = defined $logger ? $logger: $this_app;
 
     # Keep LOGGER attribute for backwards compatibility
