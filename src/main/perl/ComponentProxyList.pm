@@ -776,14 +776,16 @@ sub set_state
 {
     my ($logger, $comp, $msg, $statedir, $noaction) = @_;
     if ($noaction) {
-        $msg = "needing to run" if (!$msg);
+        $msg = "needing to run" if ($msg ne '');
         $logger->info("would mark state of component $comp as '$msg' (noaction set)");
         return;
     }
 
+    my $msg_txt = $msg eq '' ? 'no message': "message: $msg";
+
     my $file = get_statefile($logger, $comp, $statedir);
     if ($file) {
-        $logger->verbose("set_state for component $comp $file (msg $msg)");
+        $logger->verbose("set_state for component $comp $file ($msg_txt)");
         my $fh = CAF::FileWriter->new($file, log => $logger);
         print $fh "$msg\n";
         # calling close here will not update timestamp in case of same state
@@ -796,10 +798,10 @@ sub set_state
             $ec->ignore_error();
             $logger->warn("failed to write state for component $comp file $file: ".$err->reason());
         } else {
-            $logger->verbose("state for component $comp $file ",  ($changed ? "" : "not "), "changed.");
+            $logger->verbose("state for component $comp $file ", ($changed ? "" : "not "), "changed.");
         }
     } else {
-        $logger->debug(2, "No statefile to set for component $comp (msg: $msg)");
+        $logger->debug(2, "No statefile to set for component $comp ($msg_txt)");
     }
     return 1;
 }
