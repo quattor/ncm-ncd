@@ -171,6 +171,11 @@ is_deeply(bash_split_opts('_quattor_ncm_ncd_options'),
           \@OPTIONS,
           "_quattor_ncm_ncd_options");
 
+my $nooptions = [qw(no-autodeps no-check-noquattor)];
+is_deeply(bash_split_opts('_quattor_ncm_ncd_no_options'),
+          $nooptions,
+          "_quattor_ncm_ncd_no_options");
+
 sub NAME_to_opt
 {
     # each arg is a NAME element, eg name|alias|<singlelettershorthand>=something
@@ -187,7 +192,7 @@ sub NAME_to_opt
 my $cli = NCD::CLI->new('test', '--logdir', 'target');
 diag "default options ", join(" ",sort(NAME_to_opt(@{$cli->_app_default_options()})));
 diag "options ", join(" ",sort(NAME_to_opt(@{$cli->app_options()})));
-my $longopts = [sort map {"--$_"} NAME_to_opt(@{$cli->app_options()},@{$cli->_app_default_options()})];
+my $longopts = [sort map {"--$_"} (NAME_to_opt(@{$cli->app_options()}, @{$cli->_app_default_options()}), @$nooptions)];
 is_deeply([sort @{bash_split_opts('_quattor_ncm_ncd_longoptions')}],
           $longopts,
           "_quattor_ncm_ncd_longoptions");
