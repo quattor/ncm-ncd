@@ -6,7 +6,7 @@ use CAF::Reporter 16.8.1 qw($LOGFILE);
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
 use CAF::Object qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
-use EDG::WP4::CCM::Fetch::Config 16.8.1 qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
+use EDG::WP4::CCM::Fetch::Config 16.10.0 qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
 use EDG::WP4::CCM::Fetch::ProfileCache qw(GetPermissions);
 
 use Readonly;
@@ -198,11 +198,18 @@ sub setLockCCMConfig
     $msg = "locked CCM configuration for $cacheroot_msg and profileID ".(defined($profileID) ? $profileID : '<undef>');
     $self->verbose("getting $msg");
 
-    $self->{CCM_CONFIG} = $self->{CACHEMGR}->getLockedConfiguration($cred, $profileID);
-    unless (defined $self->{CCM_CONFIG}) {
+    my $cfg = $self->{CACHEMGR}->getLockedConfiguration($cred, $profileID);
+    unless (defined $cfg) {
         throw_error("cannot get $msg");
         return;
     }
+    $self->{CCM_CONFIG} = $cfg;
+
+    # Report used configuration
+    $msg = "Using profile CID ".$cfg->getConfigurationId();
+    my $name = $cfg->getName();
+    $msg .= " name $name" if defined($name);
+    $self->info($msg);
 
     return SUCCESS;
 }
