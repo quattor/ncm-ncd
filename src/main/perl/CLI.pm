@@ -126,7 +126,7 @@ sub app_options()
 
         { NAME    => 'check-noquattor',
           HELP    => 'Do not run if CCM updates are globally disabled',
-          DEFAULT => 0 },
+          DEFAULT => 1 },
 
         { NAME    => NOQUATTOR_FORCE,
           HELP    => 'Run even if CCM updates are globally disabled (and --check-noquattor is set)',

@@ -167,6 +167,9 @@ Check if CCM updates are disabled globally via the /etc/noquattor file.
 And do not run if CCM updates are globally disabled.
 (If --check-noquattor is not set, ncm-ncd will ignore /etc/noquattor).
 
+It is enabled by default, use C<--no-check-noquattor> to disable it
+(or set C<check-noquattor = 0> in the configfile).
+
 =item --history
 
 Enable history/event tracking. (Enabled by default).

@@ -14,7 +14,10 @@ _quattor_ncm_ncd_default_options=(debug help quiet verbose version)
 
 _quattor_ncm_ncd_options=(all allowbrokencomps autodeps cache_root cfgfile check-noquattor chroot configure facility force-quattor forcelock history history-instances ignore-errors-from-dependencies ignorelock include list log_group_readable log_world_readable logdir logpid multilog noaction nodeps post-hook post-hook-timeout pre-hook pre-hook-timeout retries skip state timeout unconfigure useprofile verbose_logfile)
 
-_quattor_ncm_ncd_longoptions=`_quattor_ccm_make_long_options ${_quattor_ncm_ncd_options[@]} ${_quattor_ncm_ncd_default_options[@]}`
+# boolean options which are true by default
+_quattor_ncm_ncd_no_options=(no-autodeps no-check-noquattor)
+
+_quattor_ncm_ncd_longoptions=`_quattor_ccm_make_long_options ${_quattor_ncm_ncd_options[@]} ${_quattor_ncm_ncd_no_options[@]} ${_quattor_ncm_ncd_default_options[@]}`
 
 _ncm_ncd()
 {
