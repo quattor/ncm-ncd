@@ -100,34 +100,6 @@ sub prefix
     return "/software/components/$self->{NAME}";
 }
 
-
-=item unescape
-
-Returns the unescaped version of the string provided as argument
-(using the C<<EDG::WP4::CCM::Path::unescape>> function).
-
-=cut
-
-sub unescape
-{
-    my ($self, $str) = @_;
-    return EDG::WP4::CCM::Path::unescape($str);
-}
-
-=item escape
-
-Returns the escaped version of the string provided as argument
-(using the C<<EDG::WP4::CCM::Path::escape>> function).
-
-=cut
-
-sub escape
-{
-    my ($self, $str) = @_;
-    return EDG::WP4::CCM::Path::escape($str);
-}
-
-
 =item get_warnings(): integer
 
 Returns the number of calls to 'warn' by the component.
