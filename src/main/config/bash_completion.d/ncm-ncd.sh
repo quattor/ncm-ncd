@@ -5,7 +5,7 @@
 #
 
 _ncm_ncd_ccm_bashcompletion_fn=/etc/bash_completion.d/quattor-ccm
-if [[ -z "$_quattor_ccm_CLI_longoptions" && -f $_ccm_bashcompletion_fn ]]; then
+if [[ -z "$_quattor_ccm_CLI_longoptions" && -f $_ncm_ncd_ccm_bashcompletion_fn ]]; then
     source $_ncm_ncd_ccm_bashcompletion_fn
 fi
 unset _ncm_ncd_ccm_bashcompletion_fn
