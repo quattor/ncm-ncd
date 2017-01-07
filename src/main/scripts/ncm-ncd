@@ -1,8 +1,9 @@
-#!/usr/bin/perl -w -t
+#!/usr/bin/perl -t
 # ${license-info}
 # ${developer-info}
 # ${author-info}
 # ${build-info}
+
 
 use strict;
 use warnings;

@@ -10,6 +10,7 @@ use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Path;
 use LC::Check;
 use Cwd qw(getcwd);
+use Module::Load;
 
 use File::Path;
 
@@ -299,10 +300,10 @@ sub _load
 
     local $@;
     my @warns;
-    {
+    eval {
         local $SIG{__WARN__} = sub { push(@warns, $_[0]); };
-        eval "use $package;";
-    }
+        load $package;
+    };
     if ($@) {
         $self->error("bad Perl code in $package ($mod_fn): $@");
         return;
@@ -315,7 +316,12 @@ sub _load
     }
 
     my $comp_EC;
-    eval "\$comp_EC=\$$package\:\:EC;";
+    eval {
+        my $varname = $package."::EC";
+        no strict 'refs';
+        $comp_EC = ${$varname};
+        use strict 'refs';
+    };
     if ($@ || !defined $comp_EC || ref($comp_EC) ne 'LC::Exception::Context') {
         $self->error('bad component exception handler: $EC is not defined, ',
                      'not accessible or not of type LC::Exception::Context',
@@ -326,7 +332,12 @@ sub _load
     }
 
     my $version;
-    eval "\$version=\$$package\:\:VERSION;";
+    eval {
+        my $varname = $package."::VERSION";
+        no strict 'refs';
+        $version = ${$varname};
+        use strict 'refs';
+    };
     if ($@) {
         $self->verbose("component package $package for $name has no VERSION defined: $@");
     } else {
@@ -496,8 +507,14 @@ sub _execute_dirty
     if ($this_app->option('noaction')) {
         $LC::Check::NoAction = 1;
         my $compname = $self->{'NAME'};
-        my $noact_supported = undef;
-        eval "\$noact_supported=\$NCM::Component::$mod\:\:NoActionSupported;";
+        local $@;
+        my $noact_supported;
+        eval {
+            my $varname = "NCM::Component::".$mod."::NoActionSupported";
+            no strict 'refs';
+            $noact_supported = ${$varname};
+            use strict 'refs';
+        };
         if ($@ || !defined $noact_supported || !$noact_supported) {
             # noaction is not supported by the component, skip
             # execution in fake mod
@@ -534,7 +551,9 @@ sub _execute_dirty
     # TODO: return value $result is unused
     local $@;
     my $result;
-    eval "\$result=\$component->$method(\$self->{'CONFIG'});";
+    eval {
+        $result = $component->$method($self->{'CONFIG'});
+    };
 
     my $formatter = $this_app->option('verbose') || $this_app->option('debug')
         ? "format_long" : "format_short";
@@ -544,7 +563,12 @@ sub _execute_dirty
         $self->error("component $name executing method $method fails: $@");
     } else {
         my $comp_EC;
-        eval "\$comp_EC=\$NCM::Component::$mod\:\:EC;";
+        eval {
+            my $varname = "NCM::Component::".$mod."::EC";
+            no strict 'refs';
+            $comp_EC = ${$varname};
+            use strict 'refs';
+        };
         if ($@) {
             # This is checked in _load
             $self->error("No component exception handler for component $name");

@@ -1,11 +1,6 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} NCM::Check${PMpost}
 
-package NCM::Check;
 
-use strict;
 use LC::Exception qw (SUCCESS throw_error throw_warning);
 use parent qw(LC::Check);
 
@@ -136,7 +131,8 @@ Override the global $NoAction flag.
 
 =cut
 
-sub lines ($;%) {
+sub lines
+{
     my($opath, %opt) = @_;
     my($message, $linere, $goodre, %opt2);
 
@@ -146,84 +142,87 @@ sub lines ($;%) {
     delete($opt{backup}) if exists($opt{backup}) and not defined($opt{backup});
 
     my $result = LC::Check::_badoption(\%opt,
-				    [qw(backup linere goodre good keep add)]);
+                                       [qw(backup linere goodre good keep add)]);
     if ($result) {
-      throw_error(defined($opt{$result}) ?
-		  "invalid option" : "undefined option", $result);
-      return();
+        throw_error(defined($opt{$result}) ?
+                    "invalid option" : "undefined option", $result);
+        return;
     }
+
+    local $@;
+
     #
     # linere must be defined and must be a valid regexp
     #
     if (exists($opt{linere})) {
-      $linere = $opt{linere};
-      eval { $linere =~ /$linere/ };
-      if ($@) {
-	throw_warning("bad linere: $linere\n$@");
-	return(0);
-      }
-      # anchor the regexp if needed
-      $linere = '^\s*' . $linere unless $linere =~ /^\^/;
-      $linere = $linere . '\s*$' unless $linere =~ /\$$/;
+        $linere = $opt{linere};
+        eval { $linere =~ /$linere/ };
+        if ($@) {
+            throw_warning("bad linere: $linere\n$@");
+            return 0;
+        }
+        # anchor the regexp if needed
+        $linere = '^\s*' . $linere unless $linere =~ /^\^/;
+        $linere = $linere . '\s*$' unless $linere =~ /\$$/;
     } else {
-      throw_warning("no linere defined");
-      return(0);
+        throw_warning("no linere defined");
+        return 0;
     }
     #
     # goodre must be defined and must be a valid regexp
     #
     if (exists($opt{goodre})) {
-      $goodre = $opt{goodre};
-      eval { $goodre =~ /$goodre/ };
-      if ($@) {
-	throw_warning("bad goodre: $goodre\n$@");
-	return(0);
-      }
-      # anchor the regexp if needed
-      $goodre = '^\s*' . $goodre unless $goodre =~ /^\^/;
-      $goodre = $goodre . '\s*$' unless $goodre =~ /\$$/;
+        $goodre = $opt{goodre};
+        eval { $goodre =~ /$goodre/ };
+        if ($@) {
+            throw_warning("bad goodre: $goodre\n$@");
+            return 0;
+        }
+        # anchor the regexp if needed
+        $goodre = '^\s*' . $goodre unless $goodre =~ /^\^/;
+        $goodre = $goodre . '\s*$' unless $goodre =~ /\$$/;
     } else {
-      throw_warning("no goodre defined");
-      return(0);
+        throw_warning("no goodre defined");
+        return 0;
     }
     #
     # good must be defined and must match linere and goodre
     #
     unless (exists($opt{good})) {
-      throw_warning("no good defined");
-      return(0);
+        throw_warning("no good defined");
+        return 0;
     }
     unless ($opt{good} =~ /$goodre/) {
-      throw_warning("bad good: $opt{good} !~ /$opt{goodre}/");
-      return(0);
+        throw_warning("bad good: $opt{good} !~ /$opt{goodre}/");
+        return 0;
     }
     unless ($opt{good} =~ /$linere/) {
-      throw_warning("bad good: $opt{good} !~ /$opt{linere}/");
-      return(0);
+        throw_warning("bad good: $opt{good} !~ /$opt{linere}/");
+        return 0;
     }
     #
     # check that keep is first|last|all, default being all
     #
     if (exists($opt{keep})) {
-      unless ($opt{keep} =~ /^first|last|all$/) {
-	throw_warning("bad keep option: $opt{keep}");
-	return(0);
-      }
+        unless ($opt{keep} =~ /^first|last|all$/) {
+            throw_warning("bad keep option: $opt{keep}");
+            return 0;
+        }
     } else {
-      # default is all
-      $opt{keep} = "all";
+        # default is all
+        $opt{keep} = "all";
     }
     #
     # check that add is first|last|no, default being no
     #
     if (exists($opt{add})) {
-      unless ($opt{add} =~ /^first|last|no$/) {
-	throw_warning("bad add option: $opt{add}");
-	return(0);
-      }
+        unless ($opt{add} =~ /^first|last|no$/) {
+            throw_warning("bad add option: $opt{add}");
+            return 0;
+        }
     } else {
-      # default is last
-      $opt{add} = "last";
+        # default is last
+        $opt{add} = "last";
     }
     #
     # simply call LC::Check::file with a checking routine...
@@ -233,71 +232,70 @@ sub lines ($;%) {
     $opt2{backup} = $opt{backup} if defined($opt{backup});
     $opt2{noaction} = $opt{noaction} if defined($opt{noaction});
     $opt2{code} = sub {
-                               my($contents) = @_;
-			       my(@lines, $line, $count);
-			       #
-			       # split contents
-			       #
-			       @lines = ();
-			       $count = 0;
-			       $contents = "" unless defined($contents);
-			       foreach $line (split(/\n/, $contents)) {
-				   if ($line =~ /$linere/) {
-				       $count++;
-				       $line = $opt{good}
-				           unless $line =~ /$goodre/;
-				   }
-				   push(@lines, $line);
-			       }
-			       #
-			       # maybe add if missing
-			       #
-			       unless ($count) {
-				   if ($opt{add} eq "first") {
-				       unshift(@lines, $opt{good});
-				   } elsif ($opt{add} eq "last") {
-				       push(@lines, $opt{good});
-				   }
-			       }
-			       #
-			       # rebuild contents from lines and
-			       # maybe remove duplicates
-			       #
-			       $contents = "";
-			       if ($count <= 1 || $opt{keep} eq "all") {
-				   # easy, we take all lines
-				   foreach $line (@lines) {
-				       $contents .= $line . "\n";
-				   }
-			       } else {
-				   # maybe skip some lines
-				   foreach $line (@lines) {
-				       unless ($line =~ /$linere/) {
-					   # we take this line
-					   $contents .= $line . "\n";
-					   next;
-				       }
-				       if ($opt{keep} eq "first") {
-					   if ($count) {
-					       # first
-					       $count = 0;
-					   } else {
-					       # not first
-					       next;
-					   }
-				       } elsif ($opt{keep} eq "last") {
-					   if (--$count > 0) {
-					       # not last
-					       next;
-					   } else {
-					       # last
-					   }
-				       }
-				       $contents .= $line . "\n";
-				   }
-			       }
-			       return($contents);
-	                };
+        my ($contents) = @_;
+        #
+        # split contents
+        #
+        my @lines;
+        my $count = 0;
+        $contents = "" unless defined($contents);
+        foreach my $line (split(/\n/, $contents)) {
+            if ($line =~ /$linere/) {
+                $count++;
+                $line = $opt{good}
+                unless $line =~ /$goodre/;
+            }
+            push(@lines, $line);
+        }
+        #
+        # maybe add if missing
+        #
+        unless ($count) {
+            if ($opt{add} eq "first") {
+                unshift(@lines, $opt{good});
+            } elsif ($opt{add} eq "last") {
+                push(@lines, $opt{good});
+            }
+        }
+        #
+        # rebuild contents from lines and
+        # maybe remove duplicates
+        #
+        $contents = "";
+        if ($count <= 1 || $opt{keep} eq "all") {
+            # easy, we take all lines
+            foreach my $line (@lines) {
+                $contents .= $line . "\n";
+            }
+        } else {
+            # maybe skip some lines
+            foreach my $line (@lines) {
+                unless ($line =~ /$linere/) {
+                    # we take this line
+                    $contents .= $line . "\n";
+                    next;
+                }
+                if ($opt{keep} eq "first") {
+                    if ($count) {
+                        # first
+                        $count = 0;
+                    } else {
+                        # not first
+                        next;
+                    }
+                } elsif ($opt{keep} eq "last") {
+                    if (--$count > 0) {
+                        # not last
+                        next;
+                    } else {
+                        # last
+                    }
+                }
+                $contents .= $line . "\n";
+            }
+        }
+        return($contents);
+    };
     return(LC::Check::file($opath, %opt2));
 }
 

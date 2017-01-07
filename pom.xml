@@ -204,6 +204,7 @@
                   <directory>src/main/perl</directory>
                   <filtering>true</filtering>
                   <excludes>
+                    <exclude>CLI.pm</exclude>
                     <exclude>ComponentProxy.pm</exclude>
                     <exclude>ComponentProxyList.pm</exclude>
                   </excludes>
@@ -226,6 +227,7 @@
                     <include>*.pm</include>
                   </includes>
                   <excludes>
+                    <exclude>CLI.pm</exclude>
                     <exclude>ComponentProxy.pm</exclude>
                     <exclude>ComponentProxyList.pm</exclude>
                   </excludes>
@@ -246,6 +248,7 @@
                 <resource>
                   <directory>src/main/perl</directory>
                   <includes>
+                    <include>CLI.pm</include>
                     <include>ComponentProxy.pm</include>
                     <include>ComponentProxyList.pm</include>
                   </includes>

@@ -43,8 +43,8 @@ sub reportComponents
     $self->report('active components found inside profile /software/components:');
     $self->report(sprintf("%-15s%-7s%-29s%-29s", "name", "file?", "predeps", "postdeps"));
     $self->report("-------------------------------------------------------------------");
-    my $comp;
-    foreach $comp (@{$self->{'CLIST'}}) {
+
+    foreach my $comp (@{$self->{'CLIST'}}) {
         $self->report(
             sprintf(
                 "%-15s%-7s%-29s%-29s",
@@ -374,7 +374,7 @@ sub _sortComponents
             } elsif (!$nodeps) {
                 $self->debug(2, "Found non-existing $msg, error (nodeps=$nodeps)");
                 $self->error("pre-requisite for component \"$name\" does not exist: $p");
-                return undef;
+                return;
             } else {
                 $self->debug(2, "Found non-existing $msg, continue (nodeps=$nodeps)");
             }
@@ -385,7 +385,7 @@ sub _sortComponents
             if (!defined($comps{$p}) && (!$nodeps)) {
                 $self->debug(2, "Found non-existing $msg, error (nodeps=$nodeps)");
                 $self->error("post-requisite for component \"$name\"  does not exist: $p");
-                return undef;
+                return;
             } else {
                 # TODO: This has to be wrong, why is there no check if $comps{$p} is defined?
                 # This will happily add non-existing postdeps
@@ -400,7 +400,7 @@ sub _sortComponents
     foreach my $c (sort keys(%$after)) {
         unless ($self->_topoSort($c, $after, $visited, {}, $sorted, 1)) {
             $self->error("cannot sort dependencies");
-            return undef;
+            return;
         }
     }
 

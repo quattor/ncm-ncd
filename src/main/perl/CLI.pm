@@ -31,7 +31,7 @@ Extend C<CAF::Application> options
 
 =cut
 
-sub app_options()
+sub app_options
 {
     # these options complement the ones defined in CAF::Application
     my @array;

@@ -264,7 +264,7 @@ sub _initialize
 
     unless (defined $name) {
         throw_error('bad initialization (missing first "name" agument)');
-        return undef;
+        return;
     }
 
     $self->{NAME}=$name;
