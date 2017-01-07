@@ -302,7 +302,7 @@ sub clear_state
     my ($self, $comp) = @_;
     my $file = get_statefile($self, $comp, $this_app->option('state'));
 
-    if ($this_app->option('noaction')) {
+    if ($this_app->option('noaction') && $file) {
         $self->info("would mark state of component $comp as success and remove statefile $file (noaction set)");
         return;
     } elsif ($file) {

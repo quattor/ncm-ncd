@@ -295,14 +295,23 @@ sub _load
         return;
     }
 
-    local $@;
-
     my $package = "NCM::Component::$mod";
 
-    eval ("use $package;");
+    local $@;
+    my @warns;
+    {
+        local $SIG{__WARN__} = sub { push(@warns, $_[0]); };
+        eval "use $package;";
+    }
     if ($@) {
         $self->error("bad Perl code in $package ($mod_fn): $@");
         return;
+    }
+
+    # no real point in reporting the warnings on error
+    # and we must be sure that $@ does not get redefined during $self->warn
+    foreach my $warn (@warns) {
+        $self->warn("Warning during loading of package $package: $warn");
     }
 
     my $comp_EC;

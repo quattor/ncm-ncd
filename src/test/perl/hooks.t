@@ -67,7 +67,7 @@ is($cmd->{method}, "execute", "The pre hook is execute-d");
 is($cl->post_config_actions($POST_HOOK, undef, {ERRORS => 3}), 1,
    "POST hooks execution succeeds");
 $cmd = get_command($POST_HOOK);
-ok($cmd, "The pre hook is actually executed");
+ok($cmd, "The post hook is actually executed");
 is($cmd->{method}, "execute", "The post hook is execute-d");
 ok($cmd->{object}->{OPTIONS}->{stdin},
    "Something passed as stdin to the post hook");

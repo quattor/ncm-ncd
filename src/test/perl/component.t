@@ -9,8 +9,25 @@ BEGIN {
 
 use Test::More;
 use Test::Quattor qw(component1 component-fqdn);
-use NCM::Component;
 use Test::Quattor::Object;
+
+# insert the this_app before load but after Test::Quattor
+BEGIN {
+    use CAF::Application;
+    our $this_app = CAF::Application->new('app');
+    $this_app->{CONFIG}->define("noaction");
+    $this_app->{CONFIG}->set('noaction', 123);
+}
+
+use NCM::Component;
+
+
+=head1 NoAction is set on load via this_app
+
+=cut
+
+is($NCM::Component::NoAction, 123, "NoAction set via this_app onload");
+
 
 my $obj = Test::Quattor::Object->new();
 

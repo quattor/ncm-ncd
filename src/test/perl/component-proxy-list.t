@@ -26,8 +26,6 @@ BEGIN {
     $this_app->{CONFIG}->set('autodeps', 1);
     $this_app->{CONFIG}->define("noaction");
     $this_app->{CONFIG}->set('noaction', 1);
-    $this_app->{CONFIG}->define("template-path");
-    $this_app->{CONFIG}->set('template-path', "doesnotexist");
     $this_app->{CONFIG}->define("nodeps");
     $this_app->{CONFIG}->set('nodeps', 0);
     $this_app->{CONFIG}->define("debug");

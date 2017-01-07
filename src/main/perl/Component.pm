@@ -13,7 +13,7 @@ our ($this_app, @EXPORT, $NoAction, $SYSNAME, $SYSVERS);
 
 @EXPORT = qw($NoAction $SYSNAME $SYSVERS);
 
-$NoAction = defined($this_app) ? $this_app->option('noaction') : 0;
+$NoAction = (defined($this_app) && $this_app->{CONFIG}->varlist('^noaction$')) ? $this_app->option('noaction') : 0;
 $CAF::Object::NoAction = $NoAction;
 
 $SYSNAME = LC::Sysinfo::os()->name;
