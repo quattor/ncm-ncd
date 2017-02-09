@@ -43,8 +43,8 @@ sub reportComponents
     $self->report('active components found inside profile /software/components:');
     $self->report(sprintf("%-15s%-7s%-29s%-29s", "name", "file?", "predeps", "postdeps"));
     $self->report("-------------------------------------------------------------------");
-    my $comp;
-    foreach $comp (@{$self->{'CLIST'}}) {
+
+    foreach my $comp (@{$self->{'CLIST'}}) {
         $self->report(
             sprintf(
                 "%-15s%-7s%-29s%-29s",
@@ -58,55 +58,55 @@ sub reportComponents
     return SUCCESS;
 }
 
-# Run the pre-config $hook, possibly timing out after $timeout seconds
+
+# common code for pre/post hooks
+# Run the pre/post-config $hook, possibly timing out after $timeout seconds
+# If data is defined, it is passed via stdin in JSON format
 # Returns 1 on success, 0 on failure
-sub pre_config_actions
+# TODO: the types are probably not preserved all the way here,
+#   so the JSON format e.g. might have strings for integers
+sub _config_actions
 {
-    my ($self, $hook, $timeout, $comps) = @_;
+    my ($self, $mode, $hook, $timeout, $data) = @_;
 
     return 1 if !$hook;
 
     my %opts = (log => $self);
-    $opts{stdin}   = encode_json($comps) if $comps;
-    $opts{timeout} = $timeout            if $timeout;
-
-    my $proc = CAF::Process->new([$hook], %opts);
-    $proc->execute();
-
-    if ($?) {
-        $self->error("Failed to run pre-hook $self->{PRE_HOOK}");
-        return 0;
-    }
-
-    return 1;
-}
-
-# Run the post_config $hook, maybe timing out after $timeout seconds.
-# The $report argument is the summary of errors and warnings, that
-# will be serialized to JSON and passed to the hook as its standard
-# input.
-# Returns 1 on success, 0 on failure
-sub post_config_actions
-{
-    my ($self, $hook, $timeout, $report) = @_;
-
-    return 1 if !$hook;
-
-    my %opts = (
-        log   => $self,
-        stdin => encode_json($report)
-    );
+    $opts{stdin} = encode_json($data) if $data;
     $opts{timeout} = $timeout if $timeout;
 
     my $proc = CAF::Process->new([$hook], %opts);
     $proc->execute();
 
     if ($?) {
-        $self->error("Failed to run post-hook $self->{POST_HOOK}");
+        $self->error("Failed to run $mode-hook command '$proc'");
         return 0;
     }
 
     return 1;
+}
+
+# Run the pre-config $hook, possibly timing out after $timeout seconds.
+# The comps argument is a hashref with element components
+# and list of components as value; and is serialised using JSON and
+# passed via stdin to the hook command.
+# Returns 1 on success, 0 on failure
+sub pre_config_actions
+{
+    my ($self, $hook, $timeout, $comps) = @_;
+
+    return $self->_config_actions('pre', $hook, $timeout, $comps);
+}
+
+# Run the post-config $hook, possibly timing out after $timeout seconds.
+# The $report argument is the summary of errors and warnings;
+# and is serialised using JSON and passed via stdin to the hook command.
+# Returns 1 on success, 0 on failure
+sub post_config_actions
+{
+    my ($self, $hook, $timeout, $report) = @_;
+
+    return $self->_config_actions('post', $hook, $timeout, $report);
 }
 
 # Runs all $components, potentially obeying $nodeps.  Fills in $status
@@ -302,7 +302,7 @@ sub clear_state
     my ($self, $comp) = @_;
     my $file = get_statefile($self, $comp, $this_app->option('state'));
 
-    if ($this_app->option('noaction')) {
+    if ($this_app->option('noaction') && $file) {
         $self->info("would mark state of component $comp as success and remove statefile $file (noaction set)");
         return;
     } elsif ($file) {
@@ -374,7 +374,7 @@ sub _sortComponents
             } elsif (!$nodeps) {
                 $self->debug(2, "Found non-existing $msg, error (nodeps=$nodeps)");
                 $self->error("pre-requisite for component \"$name\" does not exist: $p");
-                return undef;
+                return;
             } else {
                 $self->debug(2, "Found non-existing $msg, continue (nodeps=$nodeps)");
             }
@@ -385,7 +385,7 @@ sub _sortComponents
             if (!defined($comps{$p}) && (!$nodeps)) {
                 $self->debug(2, "Found non-existing $msg, error (nodeps=$nodeps)");
                 $self->error("post-requisite for component \"$name\"  does not exist: $p");
-                return undef;
+                return;
             } else {
                 # TODO: This has to be wrong, why is there no check if $comps{$p} is defined?
                 # This will happily add non-existing postdeps
@@ -400,7 +400,7 @@ sub _sortComponents
     foreach my $c (sort keys(%$after)) {
         unless ($self->_topoSort($c, $after, $visited, {}, $sorted, 1)) {
             $self->error("cannot sort dependencies");
-            return undef;
+            return;
         }
     }
 

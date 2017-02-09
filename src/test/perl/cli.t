@@ -27,12 +27,15 @@ my @baseopts = (
 
 # GetPermissions is unittested in CCM fetch_profilecache_make_cacheroot.t
 my $getperms;
-*NCD::CLI::GetPermissions = sub {
-    shift;
-    $getperms = \@_;
-    # dopts, fopts, mask; only dopts is relevant
-    return ({mode => 0755, group => 20}, {abc => 1}, 1);
-};
+{
+    no warnings 'redefine';
+    *NCD::CLI::GetPermissions = sub {
+        shift;
+        $getperms = \@_;
+        # dopts, fopts, mask; only dopts is relevant
+        return ({mode => 0755, group => 20}, {abc => 1}, 1);
+    };
+}
 
 # main::this_app is used in Component, ComponentProxy and ComponentProxyList
 # = uundef is needed to reset the this_app from Test::Quattor

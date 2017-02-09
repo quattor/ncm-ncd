@@ -22,8 +22,6 @@ BEGIN {
     $this_app = CAF::Application->new('app');
     $this_app->{CONFIG}->define("noaction");
     $this_app->{CONFIG}->set('noaction', 1);
-    $this_app->{CONFIG}->define("template-path");
-    $this_app->{CONFIG}->set('template-path', "doesnotexist");
 }
 
 use NCM::Component;

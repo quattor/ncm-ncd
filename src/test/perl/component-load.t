@@ -23,15 +23,6 @@ Readonly my $COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
 
 $CAF::Object::NoAction = 1;
 
-BEGIN {
-    use CAF::Application;
-    our $this_app = CAF::Application->new('app');
-    $this_app->{CONFIG}->define("noaction");
-    $this_app->{CONFIG}->set('noaction', 1);
-    $this_app->{CONFIG}->define("template-path");
-    $this_app->{CONFIG}->set('template-path', "doesnotexist");
-}
-
 my $error = 0;
 my $lasterror;
 my $mock = Test::MockModule->new('NCD::ComponentProxy');

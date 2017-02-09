@@ -27,10 +27,10 @@ BEGIN {
     $this_app->{CONFIG}->set('autodeps', 1);
     $this_app->{CONFIG}->define("noaction");
     $this_app->{CONFIG}->set('noaction', 1);
-    $this_app->{CONFIG}->define("template-path");
-    $this_app->{CONFIG}->set('template-path', "doesnotexist");
     $this_app->{CONFIG}->define("nodeps");
     $this_app->{CONFIG}->set('nodeps', 0);
+    # no need to set it? default undef
+    $this_app->{CONFIG}->define("ignore-errors-from-dependencies");
 }
 
 use Readonly;
@@ -218,7 +218,6 @@ is($err->{ERRORS}, 4, "All components get executed with --nodeps");
 is($configure, 2, "$configure components configured");
 
 # ignore-errors-from-dependencies errors of failed comp are converted in warnings
-$this_app->{CONFIG}->define("ignore-errors-from-dependencies");
 $this_app->{CONFIG}->set('ignore-errors-from-dependencies', 1);
 
 $err = {%INIT_GLOBAL_STATUS};
