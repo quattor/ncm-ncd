@@ -458,8 +458,11 @@ sub _execute
     my $res = $self->_execute_dirty($method);
 
     # restore original env and signals
+    # disable unitialized warnings (needed for old/EL5 perl)
+    no warnings qw(uninitialized);
     %ENV = %ENV_ORIG;
     %SIG = %SIG_ORIG;
+    use warnings qw(uninitialized);
 
     if (chdir($pwd)) {
         $self->debug(1, "Changed back to $pwd after executing component $name method $method");
