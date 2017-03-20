@@ -84,7 +84,7 @@ option is not very useful if C<log_world_readable> is also true.
 =item --log_world_readable <0|1>
 
 World readable logdir flag (1/0). If true, the configured logdirectory
-will have its permissions set to 755. If false the permissions will be 700.
+will have its permissions set to 755. If false (the default) the permissions will be 700.
 
 These permissions will be set each time C<ncm-ncd> is run.
 

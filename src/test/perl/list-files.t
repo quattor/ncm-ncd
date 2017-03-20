@@ -19,7 +19,7 @@ use Test::MockModule;
 our $this_app;
 
 BEGIN {
-    $this_app = CAF::Application->new('app');
+    $this_app = CAF::Application->new('app', '--debug', 5);
     $this_app->{CONFIG}->define("noaction");
     $this_app->{CONFIG}->set('noaction', 1);
 }

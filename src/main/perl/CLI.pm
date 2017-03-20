@@ -59,7 +59,7 @@ sub app_options
 
         { NAME    => 'log_world_readable=i',
           HELP    => 'World readable logdir flag 1/0',
-          DEFAULT => 1 },
+          DEFAULT => 0 },
 
         { NAME    => 'verbose_logfile=i',
           HELP    => 'Report with verbose loglevel to the logfile',
