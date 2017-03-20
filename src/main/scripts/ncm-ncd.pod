@@ -100,7 +100,7 @@ Add process ID to the log messages (disabled by default).
 
 =item --verbose_logfile <0|1>
 
-Report with verbose loglevel to the logfile.
+Report with verbose loglevel to the logfile (default enabled)
 
 =item --retries <n>
 
