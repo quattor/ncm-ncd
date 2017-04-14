@@ -323,9 +323,6 @@ ok(! @unlinked, "no files removed with noaction flag set");
 # can't make actual file with FileWriter?
 $this_app->{CONFIG}->set('noaction', 0);
 
-# close is used in set_state
-set_caf_file_close_diff(1);
-
 ok($cpl->_set_state($mytestcomp, $statemessage),
    "set_state returns 1 without noaction option");
 
