@@ -93,7 +93,7 @@ my $c;
 eval {$c = $cmp->_load();};
 ok(!$@, "No exceptions were raised when loading foo");
 isa_ok($c, "NCM::Component::foo", "Component foo correctly instantiated");
-is($cmp->{VERSION_PACKAGE}, version->new('1.2.3'), "Version from package set");
+is($cmp->{VERSION_PACKAGE}, version->new('v1.2.3'), "Version from package set");
 
 =pod
 
@@ -110,7 +110,7 @@ ok(!$@, "No exceptions raised when loading foo");
 isa_ok($c, "NCM::Component::foo", "Component path bar will actually run foo");
 is($c->prefix(), "/software/components/bar",
    "Prefix is preserved when ncm-module is specified");
-is($cmp->{VERSION_PACKAGE}, version->new('1.2.3'), "Version from package set (bar use foo module)");
+is($cmp->{VERSION_PACKAGE}, version->new('v1.2.3'), "Version from package set (bar use foo module)");
 
 =pod
 
