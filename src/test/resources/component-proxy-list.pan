@@ -2,7 +2,7 @@ object template component-proxy-list;
 
 "/software/components" = {
     # Can't have single letter components
-    foreach (idx;comp; list('aa', 'bb', 'cc', 'dd', 'ee', 'ff', 'gg')) {
+    foreach (idx; comp; list('aa', 'bb', 'cc', 'dd', 'ee', 'ff', 'gg')) {
         SELF[comp] = create('component-structure');
     };
     SELF;
