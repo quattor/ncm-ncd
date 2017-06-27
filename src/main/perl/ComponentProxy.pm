@@ -22,7 +22,7 @@ my $ec = LC::Exception::Context->new->will_store_all;
 use Readonly;
 Readonly my $COMPONENTS_PROFILE_PATH => '/software/components';
 
-Readonly my $COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
+Readonly my $COMPONENT_BASE => "NCM/Component";
 # Methods called during _execute
 Readonly::Array my @COMPONENT_MANDATORY_METHODS => qw(Configure
     error warn get_errors get_warnings name
@@ -137,20 +137,17 @@ sub getPostDependencies
 }
 
 
-=item getComponentFilename
+=item _getComponentFilename
 
-Returns the absolute filename of the components perl module.
-
-Receives an optional parameter with the base directory where the Perl
-module should be looked for.
+Returns the absolute filename of a loaded component module.
 
 =cut
 
-sub getComponentFilename
+sub _getComponentFilename
 {
-    my ($self, $base) = @_;
+    my ($self) = @_;
 
-    $base ||= $self->{COMPONENT_BASE};
+    my $base = $self->{COMPONENT_BASE};
 
     my $mod = $self->module();
     $mod =~ s{::}{/}g;
@@ -158,27 +155,9 @@ sub getComponentFilename
     my $fn = "$base/$mod.pm";
     $fn =~ s{//+}{/}g;
 
-    return $fn;
+    return $INC{$fn};
 }
 
-
-=item hasFile
-
-returns 1 if the components perl module is installed, 0 otherwise.
-
-Receives an optional parameter with the base directory where the Perl
-module should be looked for.
-
-=cut
-
-sub hasFile
-{
-    my ($self, $base) = @_;
-
-    my $filename = $self->getComponentFilename($base);
-
-    return -r $filename ? 1 : 0;
-}
 
 =back
 
@@ -288,13 +267,7 @@ sub _load
 
     my $mod = $self->module();
     my $name = $self->name();
-
-    my $mod_fn = $self->getComponentFilename();
-    if (!$self->hasFile()) {
-        # No arguments passed to hasFile
-        $self->error("component $mod is not installed (looking for $mod_fn)");
-        return;
-    }
+    $self->debug(5, "Loading component $name from module $mod.");
 
     my $package = "NCM::Component::$mod";
 
@@ -305,9 +278,11 @@ sub _load
         load $package;
     };
     if ($@) {
-        $self->error("bad Perl code in $package ($mod_fn): $@");
+        $self->error("bad Perl code in $package ($mod): $@");
         return;
     }
+
+    my $mod_fn = $self->_getComponentFilename();
 
     # no real point in reporting the warnings on error
     # and we must be sure that $@ does not get redefined during $self->warn
@@ -326,7 +301,7 @@ sub _load
         $self->error('bad component exception handler: $EC is not defined, ',
                      'not accessible or not of type LC::Exception::Context',
                      "(note 1: the component package name has to be exactly ",
-                     "'$package' - please verify this inside $mod_fn) ",
+                     "'$package' - please verify this inside the source code of $package ($mod)) ",
                      '(note 2: $EC has to be declared in "our (...)")');
         return;
     }

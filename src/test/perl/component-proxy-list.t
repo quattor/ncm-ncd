@@ -254,11 +254,11 @@ $cpl->reportComponents();
 
 is_deeply(\@report, [
               'active components found inside profile /software/components:',
-              'name           file?  predeps                      postdeps                     ',
+              'name           predeps                      postdeps                     ',
               '-------------------------------------------------------------------',
-              'bb:            no     aa                           cc,dd                        ',
-              'cc:            no                                                               ',
-              'ee:            no     aa                                                        '
+              'bb:            aa                           cc,dd                        ',
+              'cc:                                                                      ',
+              'ee:            aa                                                        '
           ], "report as expected");
 
 $mock->unmock('report');
