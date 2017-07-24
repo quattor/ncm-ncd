@@ -59,11 +59,11 @@ sub app_options
 
         { NAME    => 'log_world_readable=i',
           HELP    => 'World readable logdir flag 1/0',
-          DEFAULT => 1 },
-
-        { NAME    => 'verbose_logfile',
-          HELP    => 'Report with verbose loglevel to the logfile',
           DEFAULT => 0 },
+
+        { NAME    => 'verbose_logfile=i',
+          HELP    => 'Report with verbose loglevel to the logfile',
+          DEFAULT => 1 },
 
         { NAME    => 'logpid',
           HELP    => "Add process ID to the log messages (disabled by default)",
