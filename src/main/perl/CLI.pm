@@ -567,11 +567,11 @@ sub report_exit
     $methodmsg =~ s/e$/ing/;
 
     if ($ret->{ERRORS}) {
-        $self->info("Errors while ${methodmsg}ing ", mk_msg($ret->{ERR_COMPS}, $ret->{CLIST}));
+        $self->info("Errors while ${methodmsg} ", mk_msg($ret->{ERR_COMPS}, $ret->{CLIST}));
     }
 
     if ($ret->{WARNINGS}) {
-        $self->info("Warnings while ${methodmsg}ing ", mk_msg($ret->{WARN_COMPS}, $ret->{CLIST}));
+        $self->info("Warnings while ${methodmsg} ", mk_msg($ret->{WARN_COMPS}, $ret->{CLIST}));
     }
 
     $self->$report_method($ret->{'ERRORS'}, ' errors, ', $ret->{'WARNINGS'}, ' warnings ', "executing $action");
