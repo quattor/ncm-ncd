@@ -535,11 +535,12 @@ sub _execute_dirty
         }
     }
 
-    # run from /tmp
+    # run from tmpdir
     if (chdir($RUN_FROM)) {
         $self->debug(1, "Changed to $RUN_FROM before executing component $name method $method");
     } else {
-        $self->warn("Fail to change to $RUN_FROM before executing component $name method $method");
+        $self->error("Fail to change to $RUN_FROM before executing component $name method $method");
+        $self->finish(-1);
     };
 
     # USR1 reports current active component / method
