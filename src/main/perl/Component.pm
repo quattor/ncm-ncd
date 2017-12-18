@@ -150,7 +150,7 @@ sub event
 {
     my ($self, $object, %metadata) = @_;
 
-    return SUCCESS if (! $self->{log}->can('event'));
+    return SUCCESS if (! ($self->{log} && $self->{log}->can('event')));
 
     $metadata{component} = $self->name();
     $metadata{component_module} = ref($self);
