@@ -13,6 +13,7 @@ use Cwd qw(getcwd);
 use Module::Load;
 
 use File::Path;
+use File::Temp;
 
 our $this_app;
 *this_app = \$main::this_app;
@@ -21,7 +22,7 @@ my $ec = LC::Exception::Context->new->will_store_all;
 
 use Readonly;
 Readonly my $COMPONENTS_PROFILE_PATH => '/software/components';
-Readonly my $RUN_FROM => '/tmp';
+Readonly my $RUN_FROM => File::Temp->newdir('/tmp/ncd-components-XXXXXXXX');
 
 Readonly my $COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
 # Methods called during _execute
@@ -534,11 +535,12 @@ sub _execute_dirty
         }
     }
 
-    # run from /tmp
+    # run from tmpdir
     if (chdir($RUN_FROM)) {
         $self->debug(1, "Changed to $RUN_FROM before executing component $name method $method");
     } else {
-        $self->warn("Fail to change to $RUN_FROM before executing component $name method $method");
+        $self->error("Fail to change to $RUN_FROM before executing component $name method $method");
+        $self->finish(-1);
     };
 
     # USR1 reports current active component / method

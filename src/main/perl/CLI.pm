@@ -15,7 +15,6 @@ use Readonly;
 Readonly my $QUATTOR_LOCKDIR => '/var/lock/quattor';
 Readonly my $NCD_LOGDIR => '/var/log/ncm';
 Readonly my $NCD_CONFIGFILE => '/etc/ncm-ncd.conf';
-Readonly my $NCD_CHDIR => '/tmp';
 
 =head1 NAME NCD::CLI
 
@@ -504,10 +503,6 @@ sub action
     if ($self->option("chroot")) {
         chroot($self->option("chroot")) or die "Unable to chroot to ", $self->option("chroot");
     }
-
-    if(! chdir($NCD_CHDIR)) {
-        $self->warn("Failed to change to directory $NCD_CHDIR");
-    };
 
     my $ret = $compList->$method(@args);
 
