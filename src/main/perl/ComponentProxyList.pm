@@ -577,7 +577,7 @@ sub get_proxies
     my @c = sort keys(%$comps);
     $self->debug(3, "get_proxies for initial list ", join(',', @c));
     foreach my $comp (@c) {
-        my $px = NCD::ComponentProxy->new($comp, $self->{CCM_CONFIG});
+        my $px = NCD::ComponentProxy->new($comp, $self->{CCM_CONFIG}, $self->{RUN_FROM});
         if (!$px) {
             $self->error("Failed to create ComponentProxy for component $comp");
             return;
@@ -686,11 +686,12 @@ object initialization (done via new)
 
 sub _initialize
 {
-    my ($self, $config, $skip, $names) = @_;
+    my ($self, $config, $skip, $names, $run_from) = @_;
 
     $self->{CCM_CONFIG} = $config;
     $self->{SKIP}       = _parse_skip_args($skip);
     $self->{NAMES}      = $names || [];
+    $self->{RUN_FROM}   = $run_from || "/tmp";
 
     $self->_getComponents();
 
