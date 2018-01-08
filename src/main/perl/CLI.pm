@@ -488,7 +488,7 @@ sub action
         $self->info('No components specified, getting all active ones.');
     }
 
-    my $compList = NCD::ComponentProxyList->new($self->getCCMConfig(), $skip, @component_names);
+    my $compList = NCD::ComponentProxyList->new($self->getCCMConfig(), $skip, \@component_names);
 
     unless (defined $compList && defined($compList->{CLIST})) {
         $ec->ignore_error();

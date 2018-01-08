@@ -34,11 +34,11 @@ my $err = {};
 my $cfg = get_config_for_profile('runall-comps');
 
 my @cmp =(
-    NCD::ComponentProxy->new('acomponent', $cfg), 
+    NCD::ComponentProxy->new('acomponent', $cfg),
     NCD::ComponentProxy->new('anotherone', $cfg)
 );
 
-my $cl = NCD::ComponentProxyList->new($cfg, undef, qw(acomponent anotherone));
+my $cl = NCD::ComponentProxyList->new($cfg, undef, [qw(acomponent anotherone)]);
 
 my $comps = {
     acomponent => 1,

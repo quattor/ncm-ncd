@@ -80,7 +80,7 @@ $mock->mock('_getComponents', undef);
 
 # no skip; random order
 my @comps = qw(ee bb dd);
-my $cpl = NCD::ComponentProxyList->new($cfg, undef, @comps);
+my $cpl = NCD::ComponentProxyList->new($cfg, undef, \@comps);
 isa_ok($cpl, 'NCD::ComponentProxyList', 'init returns a NCD::ComponentProxyList instance');
 
 is_deeply($cpl->{CCM_CONFIG}, $cfg, "Configuration instance CCM_CONFIG");

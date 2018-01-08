@@ -25,7 +25,7 @@ my @unsorted = (NCD::ComponentProxy->new('second', $cfg),
 		NCD::ComponentProxy->new('third', $cfg),
 		NCD::ComponentProxy->new('first', $cfg));
 
-my $cl = NCD::ComponentProxyList->new($cfg, undef, qw(first second third));
+my $cl = NCD::ComponentProxyList->new($cfg, undef, [qw(first second third)]);
 
 my @sorted = $cl->_sortComponents(\@unsorted);
 is($unsorted[0]->name(), 'second', "Sorting is not in place");

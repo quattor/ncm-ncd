@@ -93,7 +93,7 @@ method.
 my $cfg = get_config_for_profile('execute-config-components');
 
 
-my $cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent");
+my $cl = NCD::ComponentProxyList->new($cfg, undef, [qw(acomponent)]);
 my @clist = map {$_->name()} @{$cl->{CLIST}};
 is_deeply(\@clist, ['acomponent'],
           "expected list of component proxies found");
@@ -115,7 +115,7 @@ is(scalar(keys(%{$err->{WARN_COMPS}})), 1,
 
 =cut
 
-$cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent", "anotherone");
+$cl = NCD::ComponentProxyList->new($cfg, undef, [qw(acomponent anotherone)]);
 
 $err = $cl->executeConfigComponents();
 is($err->{ERRORS}, 0, "No errors detected");
@@ -152,7 +152,7 @@ $mockcomponent->mock("executeConfigure", \&execute_dependency_failed);
 
 $cfg = get_config_for_profile("execute-config-deps");
 
-$cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent", "anotherone");
+$cl = NCD::ComponentProxyList->new($cfg, undef, [qw(acomponent anotherone)]);
 
 $err = $cl->executeConfigComponents();
 is($err->{ERRORS}, 2, "Errors reported when pre-dependencies fail");

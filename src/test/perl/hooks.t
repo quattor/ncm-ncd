@@ -42,7 +42,7 @@ $this_app->{CONFIG}->set('nodeps', 0);
 
 my $cfg = get_config_for_profile('trivial');
 
-my $cl = NCD::ComponentProxyList->new($cfg, undef, "acomponent");
+my $cl = NCD::ComponentProxyList->new($cfg, undef, [qw(acomponent)]);
 
 is($cl->pre_config_actions(undef, undef, {}), 1,
    "PRE executor succeeds when nothing is specified");

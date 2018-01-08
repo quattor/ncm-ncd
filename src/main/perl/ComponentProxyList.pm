@@ -678,7 +678,7 @@ sub _getComponents
 
 =over
 
-=item _initialize($skip,@comp_names)
+=item _initialize($config, $skip, \@comp_names)
 
 object initialization (done via new)
 
@@ -686,11 +686,11 @@ object initialization (done via new)
 
 sub _initialize
 {
-    my ($self, $config, $skip, @names) = @_;
+    my ($self, $config, $skip, $names) = @_;
 
     $self->{CCM_CONFIG} = $config;
     $self->{SKIP}       = _parse_skip_args($skip);
-    $self->{NAMES}      = \@names;
+    $self->{NAMES}      = $names || [];
 
     $self->_getComponents();
 
