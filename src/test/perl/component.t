@@ -8,7 +8,7 @@ BEGIN {
 }
 
 use Test::More;
-use Test::Quattor qw(component1 component-fqdn);
+use Test::Quattor qw(component1 component-fqdn component1_redirect component1_redirect_none);
 use Test::Quattor::Object;
 
 # insert the this_app before load but after Test::Quattor
@@ -20,7 +20,7 @@ BEGIN {
 }
 
 use NCM::Component;
-
+use NCM::Component::component1;
 
 =head1 NoAction is set on load via this_app
 
@@ -33,7 +33,7 @@ my $obj = Test::Quattor::Object->new();
 =head1 test NCM::Component init
 
 =cut
-
+my $cfg = get_config_for_profile('component1');
 my $cmp1 = NCM::Component->new('component1', $obj);
 isa_ok($cmp1, 'NCM::Component', 'NCM::Component instance 1 created');
 is($cmp1->prefix(), "/software/components/component1", "prefix for component1");
@@ -100,6 +100,42 @@ $cmp2->set_active_config($cfg_fqdn);
 my $realhostname = "something.else.example.org";
 is($cmp2->get_tree("/system/network/realhostname"), $realhostname, "realhostname set");
 is($cmp2->get_fqdn(), $realhostname, "fqdn from realhostname");
+
+=head1 Configure / Unconfigure
+
+=cut
+
+ok(!defined($cmp1->Configure($cfg)), "NCM::Component returns undef (not implemented)");
+is($obj->{LOGLATEST}->{ERROR}, 'Configure() method not implemented by component', 'Configure not implemented error');
+
+ok(!defined($cmp1->Unconfigure($cfg)), "NCM::Component returns undef (not implemented)");
+is($obj->{LOGLATEST}->{ERROR}, 'Unconfigure() method not implemented by component', 'Unconfigure not implemented error');
+
+=head1 redirect
+
+=cut
+
+my $cfgr = get_config_for_profile('component1_redirect');
+
+$cmp1 = NCM::Component::component1->new('component1', $obj);
+isa_ok($cmp1, 'NCM::Component::component1', 'is a NCM::Component::component1');
+is($cmp1->Configure($cfg), 'NCM::Component::Component1::Regular Configure', 'Redirect to default Regular');
+isa_ok($cmp1, 'NCM::Component::Component1::Regular', 'is now a NCM::Component::Component1::Regular');
+ok(!defined($cmp1->Unconfigure($cfg)), 'Redirect to default Regular has no Unconfigure');
+
+
+$cmp1 = NCM::Component::component1->new('component1', $obj);
+isa_ok($cmp1, 'NCM::Component::component1', 'is a NCM::Component::component1');
+ok(!defined($cmp1->Configure($cfgr)), 'Redirect to name Subby has no Configure');
+isa_ok($cmp1, 'NCM::Component::Component1::Subby', 'is now a NCM::Component::Component1::Subby');
+is($cmp1->Unconfigure($cfgr), 'NCM::Component::Component1::Subby Unconfigure', 'Redirect to name Subby');
+
+my $cfgn = get_config_for_profile('component1_redirect_none');
+$cmp1 = NCM::Component::component1->new('component1', $obj);
+ok(!defined($cmp1->Configure($cfgn)), "NCM::Component returns undef (redirect does not exist)");
+like($obj->{LOGLATEST}->{ERROR},
+     qr{REDIRECT bad Perl code in NCM::Component::Component1::DoesNotExist: Can't locate NCM/Component/Component1/DoesNotExist.pm in \@INC},
+     'redirect does not exist error');
 
 
 done_testing;
