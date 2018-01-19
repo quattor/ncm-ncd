@@ -80,12 +80,17 @@ $mock->mock('_getComponents', undef);
 
 # no skip; random order
 my @comps = qw(ee bb dd);
-my $cpl = NCD::ComponentProxyList->new($cfg, undef, @comps);
+my $cpl = NCD::ComponentProxyList->new($cfg, undef, \@comps, "/somewhere");
 isa_ok($cpl, 'NCD::ComponentProxyList', 'init returns a NCD::ComponentProxyList instance');
 
 is_deeply($cpl->{CCM_CONFIG}, $cfg, "Configuration instance CCM_CONFIG");
 is_deeply($cpl->{SKIP}, [], "Empty skip list");
 is_deeply($cpl->{NAMES}, \@comps, "Correct list of initial components");
+is($cpl->{RUN_FROM}, "/somewhere", "Correct run_from passed as 4th arg");
+
+my $cpl2 = NCD::ComponentProxyList->new($cfg, undef, \@comps);
+isa_ok($cpl2, 'NCD::ComponentProxyList', 'init returns a NCD::ComponentProxyList instance 2');
+is($cpl2->{RUN_FROM}, "/tmp", "Correct default /tmp run_from");
 
 ok(! defined($cpl->{CLIST}), "Component proxies list is undefined in case of failure of _getComponents");
 
@@ -188,6 +193,11 @@ is_deeply(\@names, ['bb','cc','ee','aa','dd'],
           "Expected names of components proxies");
 is($ERROR, 0, "no errors logged");
 is($WARN, 0, "no warn logged");
+
+my $px = $pxs[0];
+diag explain $px;
+isa_ok($px, 'NCD::ComponentProxy', "get_proxies returns list of ComponentProxy instances");
+is($px->{RUN_FROM}, "/somewhere", "proxies initialised with same run_from");
 
 # autodeps off, nodeps off
 # no recursive search due to no missing deps from autodeps

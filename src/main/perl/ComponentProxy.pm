@@ -21,7 +21,6 @@ my $ec = LC::Exception::Context->new->will_store_all;
 
 use Readonly;
 Readonly my $COMPONENTS_PROFILE_PATH => '/software/components';
-Readonly my $RUN_FROM => '/tmp';
 
 Readonly my $COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
 # Methods called during _execute
@@ -195,7 +194,7 @@ object initialization (done via new)
 
 sub _initialize
 {
-    my ($self, $name, $config) = @_;
+    my ($self, $name, $config, $run_from) = @_;
     $self->setup_reporter();
 
     if (!defined($name) || !defined($config)) {
@@ -211,6 +210,7 @@ sub _initialize
     }
 
     $self->{CONFIG} = $config;
+    $self->{RUN_FROM} = $run_from || "/tmp";
 
     # Default basepath for NCM modules
     $self->{COMPONENT_BASE} = $COMPONENT_BASE;
@@ -534,11 +534,11 @@ sub _execute_dirty
         }
     }
 
-    # run from /tmp
-    if (chdir($RUN_FROM)) {
-        $self->debug(1, "Changed to $RUN_FROM before executing component $name method $method");
+    # RUN_FROM
+    if (chdir($self->{RUN_FROM})) {
+        $self->debug(1, "Changed to $self->{RUN_FROM} before executing component $name method $method");
     } else {
-        $self->warn("Fail to change to $RUN_FROM before executing component $name method $method");
+        $self->warn("Fail to change to $self->{RUN_FROM} before executing component $name method $method: $!");
     };
 
     # USR1 reports current active component / method

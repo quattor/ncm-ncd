@@ -15,7 +15,6 @@ use Readonly;
 Readonly my $QUATTOR_LOCKDIR => '/var/lock/quattor';
 Readonly my $NCD_LOGDIR => '/var/log/ncm';
 Readonly my $NCD_CONFIGFILE => '/etc/ncm-ncd.conf';
-Readonly my $NCD_CHDIR => '/tmp';
 
 =head1 NAME NCD::CLI
 
@@ -419,6 +418,22 @@ sub action
 
     my ($method, $action);
 
+    # Make temp dir to run from
+    my $chroot = $self->option('chroot') || "";
+    $chroot =~ s/\/+$//; # strip trailing /
+    my $chroot_pattern = "^$chroot";
+
+    my $dir_result = $self->directory("$chroot/tmp/ncm-ncd-XXXXXX", mode => oct(700), temp => 1);
+    if (! defined($dir_result)) {
+        $self->error("failed to create tempdir ");
+        $self->finish(-1);
+    }
+
+    # strigified result is the directory path
+    #     this is a tempdir, always CHANGED
+    my $run_from = "$dir_result";
+    $run_from =~ s/$chroot_pattern//;
+
     if ($self->option('list')) {
         # Just do the list here
         my $compList = NCD::ComponentProxyList->new($self->getCCMConfig());
@@ -488,7 +503,7 @@ sub action
         $self->info('No components specified, getting all active ones.');
     }
 
-    my $compList = NCD::ComponentProxyList->new($self->getCCMConfig(), $skip, @component_names);
+    my $compList = NCD::ComponentProxyList->new($self->getCCMConfig(), $skip, \@component_names, $run_from);
 
     unless (defined $compList && defined($compList->{CLIST})) {
         $ec->ignore_error();
@@ -501,12 +516,20 @@ sub action
         $self->option("post-hook"), $self->option("post-hook-timeout"),
         );
 
-    if ($self->option("chroot")) {
-        chroot($self->option("chroot")) or die "Unable to chroot to ", $self->option("chroot");
+    if ($chroot) {
+        if (chroot($chroot)) {
+            $self->verbose("Chrooted to $chroot");
+        } else {
+            $self->error("Unable to chroot to $chroot");
+            $self->finish(-1);
+        }
     }
 
-    if(! chdir($NCD_CHDIR)) {
-        $self->warn("Failed to change to directory $NCD_CHDIR");
+    if (chdir($run_from)) {
+        $self->verbose("Changed to directory $run_from");
+    } else {
+        $self->error("Failed to change to directory $run_from: $!");
+        $self->finish(-1);
     };
 
     my $ret = $compList->$method(@args);
