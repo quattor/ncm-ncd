@@ -3,7 +3,7 @@
   <groupId>org.quattor.cfg.module</groupId>
   <artifactId>ncm-ncd</artifactId>
   <packaging>pom</packaging>
-  <version>18.6.0</version>
+  <version>18.6.1-SNAPSHOT</version>
   <name>NCD is the front-end for invoking NCM components</name>
   <parent>
     <groupId>org.quattor.maven</groupId>
