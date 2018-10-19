@@ -12,12 +12,14 @@ unset _ncm_ncd_ccm_bashcompletion_fn
 
 _quattor_ncm_ncd_default_options=(debug help quiet verbose version)
 
-_quattor_ncm_ncd_options=(all allowbrokencomps autodeps cache_root cfgfile check-noquattor chroot configure facility force-quattor forcelock history history-instances ignore-errors-from-dependencies ignorelock include list log_group_readable log_world_readable logdir logpid multilog noaction nodeps post-hook post-hook-timeout pre-hook pre-hook-timeout retries skip state timeout unconfigure useprofile verbose_logfile)
+_quattor_ncm_ncd_options=(all allowbrokencomps autodeps cache_root cfgfile check-noquattor chroot configure facility force-quattor forcelock history history-instances ignore-errors-from-dependencies ignorelock include list log_group_readable log_world_readable logdir logpid multilog noaction nodeps post-hook post-hook-timeout pre-hook pre-hook-timeout report report-format retries skip state timeout unconfigure useprofile verbose_logfile)
 
 # boolean options which are true by default
 _quattor_ncm_ncd_no_options=(no-autodeps no-check-noquattor)
 
 _quattor_ncm_ncd_longoptions=`_quattor_ccm_make_long_options ${_quattor_ncm_ncd_options[@]} ${_quattor_ncm_ncd_no_options[@]} ${_quattor_ncm_ncd_default_options[@]}`
+
+_quattor_ncm_ncd_report_formats=(simple)
 
 _ncm_ncd()
 {
@@ -38,6 +40,10 @@ _ncm_ncd()
             ;;
         --useprofile)
             _quattor_ccm_tabcomp_cids
+            return 0
+            ;;
+        --report-format)
+            COMPREPLY=($(compgen -W "$_quattor_ncm_ncd_report_formats" -- ${cur}))
             return 0
             ;;
         *)

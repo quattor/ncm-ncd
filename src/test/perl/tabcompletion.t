@@ -14,7 +14,7 @@ use Test::Quattor::ProfileCache;
 use Test::Quattor::TextRender::Base;
 use EDG::WP4::CCM::Path qw(set_safe_unescape reset_safe_unescape);
 use EDG::WP4::CCM::TextRender qw(ccm_format);
-use NCD::CLI;
+use NCD::CLI qw(@SUPPORTED_REPORT_FORMATS);
 use Cwd qw(getcwd abs_path);
 use File::Copy;
 
@@ -166,8 +166,8 @@ Readonly::Array my @OPTIONS => qw(all allowbrokencomps autodeps cache_root cfgfi
 check-noquattor chroot configure facility force-quattor forcelock history history-instances
 ignore-errors-from-dependencies ignorelock include list
 log_group_readable log_world_readable logdir logpid multilog noaction nodeps
-post-hook post-hook-timeout pre-hook pre-hook-timeout retries skip state timeout
-unconfigure useprofile verbose_logfile);
+post-hook post-hook-timeout pre-hook pre-hook-timeout report report-format retries
+skip state timeout unconfigure useprofile verbose_logfile);
 
 is_deeply(bash_split_opts('_quattor_ncm_ncd_options'),
           \@OPTIONS,
@@ -177,6 +177,10 @@ my $nooptions = [qw(no-autodeps no-check-noquattor)];
 is_deeply(bash_split_opts('_quattor_ncm_ncd_no_options'),
           $nooptions,
           "_quattor_ncm_ncd_no_options");
+
+is_deeply(bash_split_opts('_quattor_ncm_ncd_report_formats'),
+          \@SUPPORTED_REPORT_FORMATS,
+          "_quattor_ncm_ncd_report_formats");
 
 sub NAME_to_opt
 {
@@ -219,6 +223,10 @@ test_comp(\@cids,
           "Tabcomplete _ncm_ncd --useprofile",
           'COMP_WORDS=(SCRIPTNAME --useprofile)', 'COMP_CWORD=2', '&&', '_ncm_ncd');
 
+# report-format
+test_comp(\@SUPPORTED_REPORT_FORMATS,
+          "Tabcomplete _ncm_ncd --report-format",
+          'COMP_WORDS=(SCRIPTNAME --report-format)', 'COMP_CWORD=2', '&&', '_ncm_ncd');
 
 # test binding
 test_bash(qr{^complete -F _ncm_ncd ncm-ncd$}m,
