@@ -16,7 +16,7 @@ use Readonly;
 Readonly my $QUATTOR_LOCKDIR => '/var/lock/quattor';
 Readonly my $NCD_LOGDIR => '/var/log/ncm';
 Readonly my $NCD_CONFIGFILE => '/etc/ncm-ncd.conf';
-Readonly our @SUPPORTED_REPORT_FORMATS => qw(simple);
+Readonly our @SUPPORTED_REPORT_FORMATS => qw(nagios simple);
 
 our @EXPORT_OK = qw(@SUPPORTED_REPORT_FORMATS);
 
@@ -142,7 +142,7 @@ sub app_options
         { NAME    => 'report',
           HELP    => 'Report the component state' },
 
-        { NAME    => 'report-format',
+        { NAME    => 'report-format=s',
           HELP    => 'Format to use to report the component state (supported '.join(', ', @SUPPORTED_REPORT_FORMATS).')',
           DEFAULT => 'simple' },
 
@@ -423,7 +423,7 @@ sub check_options
 
     my $report_format = $self->option('report-format');
     if (!grep {$_ eq $report_format} @SUPPORTED_REPORT_FORMATS) {
-        $self->error('Unsupported report format $report_format, use of one '.join(', ', @SUPPORTED_REPORT_FORMATS));
+        $self->error("Unsupported report format $report_format, use of one ".join(', ', @SUPPORTED_REPORT_FORMATS));
         $self->finish(-1);
     }
 }
@@ -431,7 +431,7 @@ sub check_options
 =item _report_state_simple
 
 Create basic report for components from hashref C<state> and
-configguration name C<cfgname>.
+configuration name C<cfgname>.
 
 =cut
 
@@ -440,7 +440,7 @@ sub _report_state_simple
     my ($self, $state, $cfgname) = @_;
 
     my $cfgtxt = defined($cfgname) ? " for current active CCM config $cfgname" : '';
-    my $nr = scalar %$state;
+    my $nr = scalar keys %$state;
     if (%$state) {
         $self->report("$nr components with error$cfgtxt");
         foreach my $comp (sort keys %$state) {
@@ -458,6 +458,43 @@ sub _report_state_simple
         $self->finish(0);
     }
 
+    return SUCCESS;
+}
+
+=item _report_state_nagios
+
+Create report in nagios check format for components from hashref C<state> and
+configuration name C<cfgname>.
+
+=cut
+
+sub _report_state_nagios
+{
+    my ($self, $state, $cfgname) = @_;
+
+    my $nr = scalar keys %$state;
+    my $perfdata = "failed=$nr";
+    if (defined($cfgname)) {
+        $perfdata .= ", version=$cfgname";
+    }
+    my ($ec, $msg);
+    if ($nr) {
+        my @comps = sort keys %$state;
+        $msg = "ERROR $nr components with error: ".join(',', @comps);
+        my $size = length($msg) + length($perfdata) + 3; # 3 for separator ' | '
+        if ($size > 255) {  # TODO: double check if this is inlcuding the perfdata (let's assume it is)
+            $msg = substr($msg, 0, 255 - 3); # -3 for the ...
+            $msg =~ s/,[^,]*$//;
+            $msg .= "...";
+        }
+        $ec = 2;
+    } else {
+        $msg = "OK $nr components with error";
+        $ec = 0;
+    }
+
+    $self->report("$msg | $perfdata");
+    $self->finish($ec);
     return SUCCESS;
 }
 

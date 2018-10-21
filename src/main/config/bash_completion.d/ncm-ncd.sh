@@ -19,7 +19,7 @@ _quattor_ncm_ncd_no_options=(no-autodeps no-check-noquattor)
 
 _quattor_ncm_ncd_longoptions=`_quattor_ccm_make_long_options ${_quattor_ncm_ncd_options[@]} ${_quattor_ncm_ncd_no_options[@]} ${_quattor_ncm_ncd_default_options[@]}`
 
-_quattor_ncm_ncd_report_formats=(simple)
+_quattor_ncm_ncd_report_formats=(nagios simple)
 
 _ncm_ncd()
 {
@@ -43,7 +43,8 @@ _ncm_ncd()
             return 0
             ;;
         --report-format)
-            COMPREPLY=($(compgen -W "$_quattor_ncm_ncd_report_formats" -- ${cur}))
+            # use [*] here, value for -W has to be single string
+            COMPREPLY=($(compgen -W "${_quattor_ncm_ncd_report_formats[*]}" -- ${cur}))
             return 0
             ;;
         *)

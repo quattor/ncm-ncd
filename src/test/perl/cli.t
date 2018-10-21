@@ -107,8 +107,13 @@ $mock_cli->unmock('verbose');
 # Test report / report-format
 # Also test ComponentProxyList get_states here
 $this_app = NCD::CLI->new(@baseopts, '--debug', 5, '--report');
-isa_ok($this_app, 'NCD::CLI', 'NCD::CLI created (for root user)');
+isa_ok($this_app, 'NCD::CLI', 'NCD::CLI created (for root user) 1');
 is($this_app->option('report-format'), 'simple', "simple is default report format");
+
+my $this_appn = NCD::CLI->new(@baseopts, '--debug', 5, '--report', '--report-format', 'nagios');
+isa_ok($this_appn, 'NCD::CLI', 'NCD::CLI created (for root user) 2');
+is($this_appn->option('report-format'), 'nagios', "nagios report format");
+
 my $statedir = $this_app->option('state');
 is($statedir, "/var/run/quattor-components", "expected default statedir value (from config file)");
 
@@ -131,11 +136,11 @@ ok(!$this_app->directory_exists($statedir), "statedir $statedir does not exist 2
 is($rep[-1]->[0], 'No components with error', "No state directory gives reported componets are all ok");
 
 # empty statedir
-@rep = qw();
 ok($this_app->directory($statedir), "statedir created");
 ok($this_app->directory_exists($statedir), "statedir $statedir does exist 1");
 is_deeply(get_states($this_app, $statedir), {}, "get_states on empty dir returns empty hashref");
 
+@rep = qw();
 $mock_cli->mock('report', $mockreport);
 eval {$this_app->main($ec);};
 $mock_cli->unmock('report');
@@ -143,8 +148,14 @@ like($@, qr{^exit 0 at}, "report exited with success 2");
 ok($this_app->directory_exists($statedir), "statedir $statedir does exist 2");
 is($rep[-1]->[0], 'No components with error', "Empty state directory gives reported componets are all ok");
 
-# 2 failed comps
 @rep = qw();
+$mock_cli->mock('report', $mockreport);
+eval {$this_appn->main($ec);};
+$mock_cli->unmock('report');
+like($@, qr{^exit 0 at}, "report exited with success 2");
+is($rep[-1]->[0], 'OK 0 components with error | failed=0', "Empty state directory gives reported componets are all ok");
+
+# 2 failed comps
 $mock_cpl->mock('_mtime', sub {return $_[0] =~ m/woohaa/ ? 123456789 : 987654321});
 set_state($this_app, 'woohaa', 'woopsie', $statedir);
 set_state($this_app, 'ouch', '', $statedir);
@@ -159,6 +170,7 @@ is_deeply(get_states($this_app, $statedir), {
     }
 }, "get_states on 2 failed components returns hashref");
 
+@rep = qw();
 $mock_cli->mock('report', $mockreport);
 eval {$this_app->main($ec);};
 $mock_cli->unmock('report');
@@ -168,6 +180,26 @@ is($rep[-3]->[0], '2 components with error', "Main report is 2 failed components
 like($rep[-2]->[0], qr{^  ouch failed on .*? 2001 \(no message\)}, "failed ouch component");
 like($rep[-1]->[0], qr{^  woohaa failed on .*? 1973 with message woopsie}, "failed woohaa component");
 
-diag explain \@rep;
+@rep = qw();
+$mock_cli->mock('report', $mockreport);
+eval {$this_appn->main($ec);};
+$mock_cli->unmock('report');
+like($@, qr{^exit 2 at}, "nagios report exited with failure 1");
+is($rep[-1]->[0], "ERROR 2 components with error: ouch,woohaa | failed=2", "nagios format failed components");
+
+# test nagios format message shortening
+foreach my $i (1..50) {
+    set_state($this_app, "compo$i", '', $statedir);
+}
+@rep = qw();
+$mock_cli->mock('report', $mockreport);
+eval {$this_appn->main($ec);};
+$mock_cli->unmock('report');
+like($@, qr{^exit 2 at}, "nagios report exited with failure 2");
+my $fcomps = join(",", (sort map {"compo$_"} (1..3,10..33)));
+is($rep[-1]->[0], "ERROR 52 components with error: $fcomps... | failed=52", "nagios format failed components (shortening)");
+
+
+#diag explain \@rep;
 
 done_testing();
