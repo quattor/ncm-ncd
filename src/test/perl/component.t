@@ -8,7 +8,6 @@ BEGIN {
 }
 
 use Test::More;
-
 use Test::Quattor qw(component1 component-fqdn);
 use Test::Quattor::Object;
 
@@ -44,6 +43,7 @@ is($cmp1->prefix(), "/software/components/component1", "prefix for component1");
 =cut
 
 my $cfg1 = get_config_for_profile('component1');
+
 ok(! defined($cmp1->{ACTIVE_CONFIG}), "no ACTIVE_CONFIG attribute set for component1 after init");
 my $ret = $cmp1->set_active_config($cfg1);
 is($ret, $cmp1->{ACTIVE_CONFIG}, "set_active_config sets and return ACTIVE_CONFIG attribute");
@@ -86,6 +86,20 @@ is($cmp2->{fail}, "*** path //invalid/path must be an absolute path: start '', r
 # should reset previous failure
 ok(!defined($cmp2->get_tree("/non/existing/path")), "non-existing path returns undef");
 ok(! defined($cmp2->{fail}), "non-existing path does not set fail attribute with get_tree");
+
+
+=head2 get_fqdn
+
+=cut
+
+ok(! defined($cmp2->get_tree("/system/network/realhostname")), "realhostname not set");
+is($cmp2->get_fqdn(), "short.example.com", "fqdn from hostname and domainname in absence of realhostname");
+
+my $cfg_fqdn = get_config_for_profile('component-fqdn');
+$cmp2->set_active_config($cfg_fqdn);
+my $realhostname = "something.else.example.org";
+is($cmp2->get_tree("/system/network/realhostname"), $realhostname, "realhostname set");
+is($cmp2->get_fqdn(), $realhostname, "fqdn from realhostname");
 
 
 done_testing;

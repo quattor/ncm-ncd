@@ -274,6 +274,26 @@ sub get_tree
     }
 }
 
+=item get_fqdn
+
+Return the fqdn based on the current active config.
+
+This is either C<< /system/network/realhostname >> (if defined)
+or C<< </system/network/hostname>.</system/network/domainname> >>.
+
+(Requires active configuration set).
+
+=cut
+
+sub get_fqdn
+{
+    my ($self) = @_;
+
+    my $tree = $self->get_tree('/system/network');
+    # /system/network/hostname and /system/network/domainname are mandatory
+    return $tree->{realhostname} || "$tree->{hostname}.$tree->{domainname}";
+}
+
 =back
 
 =head1 Pure virtual methods
