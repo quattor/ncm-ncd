@@ -428,6 +428,14 @@ sub check_options
     }
 }
 
+# simple wrapper around print for unittesting
+#   adds newline at the end
+sub _print {
+    shift;
+    print @_;
+    print "\n" if $_[-1] !~ m/\n$/;
+}
+
 =item _report_state_simple
 
 Create basic report for components from hashref C<state> and
@@ -442,7 +450,7 @@ sub _report_state_simple
     my $cfgtxt = defined($cfgname) ? " for current active CCM config $cfgname" : '';
     my $nr = scalar keys %$state;
     if (%$state) {
-        $self->report("$nr components with error$cfgtxt");
+        $self->_print("$nr components with error$cfgtxt");
         foreach my $comp (sort keys %$state) {
             my $date = scalar localtime($state->{$comp}->{timestamp});
             my $msg = $state->{$comp}->{message};
@@ -450,11 +458,11 @@ sub _report_state_simple
             $msg =~ s/\n+/ /g;
             $msg = $msg eq '' ? '(no message)' : "with message $msg";
 
-            $self->report("  $comp failed on $date $msg");
+            $self->_print("  $comp failed on $date $msg");
         }
         $self->finish(-1);
     } else {
-        $self->report("No components with error$cfgtxt");
+        $self->_print("No components with error$cfgtxt");
         $self->finish(0);
     }
 
@@ -482,7 +490,7 @@ sub _report_state_nagios
         my @comps = sort keys %$state;
         $msg = "ERROR $nr components with error: ".join(',', @comps);
         my $size = length($msg) + length($perfdata) + 3; # 3 for separator ' | '
-        if ($size > 255) {  # TODO: double check if this is inlcuding the perfdata (let's assume it is)
+        if ($size > 255) {
             $msg = substr($msg, 0, 255 - 3); # -3 for the ...
             $msg =~ s/,[^,]*$//;
             $msg .= "...";
@@ -493,7 +501,7 @@ sub _report_state_nagios
         $ec = 0;
     }
 
-    $self->report("$msg | $perfdata");
+    $self->_print("$msg | $perfdata");
     $self->finish($ec);
     return SUCCESS;
 }
