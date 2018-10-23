@@ -195,6 +195,7 @@ object initialization (done via new)
 sub _initialize
 {
     my ($self, $name, $config, $run_from) = @_;
+
     $self->setup_reporter();
 
     if (!defined($name) || !defined($config)) {
@@ -555,7 +556,8 @@ sub _execute_dirty
     local $@;
     my $result;
     eval {
-        $result = $component->$method($self->{'CONFIG'});
+        $component->set_active_config($self->{CONFIG});
+        $result = $component->$method($self->{CONFIG});
     };
 
     my $formatter = $this_app->option('verbose') || $this_app->option('debug')
@@ -609,7 +611,7 @@ sub _execute_dirty
             ERRORS => $component->get_errors()
         };
 
-        $self->info("configure on component $name executed, ",
+        $self->info("$method on component $name executed, ",
                     "$retval->{ERRORS} errors, ",
                     "$retval->{WARNINGS} warnings");
 

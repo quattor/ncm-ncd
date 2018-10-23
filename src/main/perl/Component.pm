@@ -209,6 +209,91 @@ sub event_report
     return \@idxs;
 }
 
+=item set_active_config
+
+Set C<config> as the C<ACTIVE_CONFIG> attribute.
+
+Returns the current active config.
+
+=cut
+
+sub set_active_config
+{
+    my ($self, $config) = @_;
+
+    $self->{ACTIVE_CONFIG} = $config;
+
+    return $self->{ACTIVE_CONFIG};
+}
+
+=item get_tree
+
+Return C<EDG::WP4::CCM::Configuration->getTree> on the C<ACTIVE_CONFIG> attribute.
+
+All arguments are passed to C<getTree>.
+
+If no arguments are specified, the path passed to C<getTree> is
+the component prefix (using the C<prefix> method).
+
+If the path specified is not absolute, the path passed to C<getTree> is
+prefixed with the component prefix (using the C<prefix> method).
+
+Returns undef on failure, with C<fail> attribute set in case of an error.
+
+(Requires active configuration set).
+
+=cut
+
+sub get_tree
+{
+    my ($self, $path, @args) = @_;
+
+    if (! defined($path)) {
+        $path = $self->prefix();
+    } elsif ($path !~ m{^/}) {
+        my $prefix = $self->prefix();
+        $prefix =~ s{/*$}{}; # remove trailing /
+        $path = "$prefix/$path";
+    }
+
+    # Handle any previous errors on active config
+    delete $self->{ACTIVE_CONFIG}->{fail};
+    # Reset previous fail attribute
+    delete $self->{fail};
+    my $tree = $self->{ACTIVE_CONFIG}->getTree($path, @args);
+
+    if (defined($tree)) {
+        return $tree;
+    } else {
+        my $fail = $self->{ACTIVE_CONFIG}->{fail};
+        if (defined($fail)) {
+            return $self->fail($fail);
+        } else {
+            return;
+        }
+    }
+}
+
+=item get_fqdn
+
+Return the fqdn based on the current active config.
+
+This is either C<< /system/network/realhostname >> (if defined)
+or C<< </system/network/hostname>.</system/network/domainname> >>.
+
+(Requires active configuration set).
+
+=cut
+
+sub get_fqdn
+{
+    my ($self) = @_;
+
+    my $tree = $self->get_tree('/system/network');
+    # /system/network/hostname and /system/network/domainname are mandatory
+    return $tree->{realhostname} || "$tree->{hostname}.$tree->{domainname}";
+}
+
 =back
 
 =head1 Pure virtual methods
@@ -252,28 +337,56 @@ sub Unconfigure
 
 =over
 
-=item _initialize($comp_name)
+=item _initialize
 
 object initialization (done via new)
+
+Arguments
+
+=over
+
+=item name
+
+Set the component name
+
+=item logger
+
+Set the logger instance (C<main::this_app> is used as default when undefined)
+
+=back
+
+Optional arguments
+
+=over
+
+=item config
+
+Set config as active config (using C<set_active_config> method).
+
+=back
 
 =cut
 
 sub _initialize
 {
-    my ($self, $name, $logger) = @_;
+    my ($self, $name, $logger, %opts) = @_;
 
     unless (defined $name) {
         throw_error('bad initialization (missing first "name" agument)');
         return;
     }
 
-    $self->{NAME}=$name;
-    $self->{ERRORS}=0;
-    $self->{WARNINGS}=0;
-    $self->{log} = defined $logger ? $logger: $this_app;
+    $self->{NAME} = $name;
+    $self->{ERRORS} = 0;
+    $self->{WARNINGS} = 0;
+    $self->{log} = defined $logger ? $logger : $this_app;
 
     # Keep LOGGER attribute for backwards compatibility
     $self->{LOGGER} = $self->{log};
+
+    if ($opts{config}) {
+        $self->set_active_config($opts{config});
+    }
 
     return SUCCESS;
 }

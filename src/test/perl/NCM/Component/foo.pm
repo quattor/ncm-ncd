@@ -29,6 +29,9 @@ sub Configure
     $self->error("foo Configure e2");
     $self->error("foo Configure e3");
 
+    $self->{_config} = $config;
+    $self->{_active_config} = $self->{ACTIVE_CONFIG};
+
     return 1;
 };
 
