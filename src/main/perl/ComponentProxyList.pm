@@ -41,15 +41,14 @@ sub reportComponents
     my $self = shift;
 
     $self->report('active components found inside profile /software/components:');
-    $self->report(sprintf("%-15s%-7s%-29s%-29s", "name", "file?", "predeps", "postdeps"));
+    $self->report(sprintf("%-15s%-29s%-29s", "name", "predeps", "postdeps"));
     $self->report("-------------------------------------------------------------------");
 
     foreach my $comp (@{$self->{'CLIST'}}) {
         $self->report(
             sprintf(
-                "%-15s%-7s%-29s%-29s",
+                "%-15s%-29s%-29s",
                 $comp->name() . ':',
-                ($comp->hasFile() ? "yes" : "no"),
                 join(',', @{$comp->getPreDependencies()}),
                 join(',', @{$comp->getPostDependencies()})
             )

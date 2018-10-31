@@ -19,7 +19,7 @@ use Cwd;
 use version;
 
 use Readonly;
-Readonly my $COMPONENT_BASE => "/usr/lib/perl/NCM/Component";
+Readonly my $COMPONENT_BASE => "NCM/Component";
 
 $CAF::Object::NoAction = 1;
 
@@ -77,23 +77,19 @@ my $cfg = get_config_for_profile("component-load");
 my $cmp = NCD::ComponentProxy->new("foo", $cfg);
 isa_ok($cmp, "NCD::ComponentProxy", "Active component foo is loaded");
 
-is($cmp->{COMPONENT_BASE},
-   $COMPONENT_BASE,
-   "Default module base path as expected");
-is($cmp->getComponentFilename(), "$COMPONENT_BASE/foo.pm",
-   "getComponentFilename returned expected module filename");
-
-$cmp->{COMPONENT_BASE} = $modpath;
-is($cmp->getComponentFilename(), "$modpath/foo.pm",
-   "getComponentFilename returned expected module filename for foo");
-ok($cmp->hasFile(), "Found NCM::Component::foo");
-
 my $c;
 
 eval {$c = $cmp->_load();};
 ok(!$@, "No exceptions were raised when loading foo");
 isa_ok($c, "NCM::Component::foo", "Component foo correctly instantiated");
 is($cmp->{VERSION_PACKAGE}, version->new('v1.2.3'), "Version from package set");
+
+is($cmp->{COMPONENT_BASE},
+   $COMPONENT_BASE,
+   "Default module base path as expected");
+
+is($cmp->_getComponentFilename(), "$modpath/foo.pm",
+   "_getComponentFilename returned expected module filename");
 
 =pod
 
@@ -136,20 +132,16 @@ is($c->prefix(), "/software/components/baz",
 
 # module is missing
 $cmp->{MODULE} = "doesnotexist";
-ok(! -f $cmp->getComponentFilename(), "Module does not exists");
-ok(! $cmp->hasFile(), "hasFile fails on non-existing module");
-
 $error = 0;
 $c = $cmp->_load();
 is($c, undef, "Non-existing module is not loaded");
 is($error, 1, "error logged for non-existing module");
-like($lasterror, qr{component doesnotexist is not installed},
+like($lasterror, qr{Can't locate NCM/Component/doesnotexist\.pm},
      "non-existing module error message");
 
 # invalid perl code
 $error = 0;
 $cmp->{MODULE} = "invalidperl";
-ok($cmp->hasFile(), "invalidperl module found");
 
 $c = $cmp->_load();
 is($c, undef, "invalidperl module is not loaded");
@@ -160,7 +152,6 @@ like($lasterror, qr{bad Perl code in},
 # missing EC package variable
 $error = 0;
 $cmp->{MODULE} = "missingec";
-ok($cmp->hasFile(), "missingec module found");
 
 $c = $cmp->_load();
 is($c, undef, "module with missing EC is not loaded");
@@ -171,7 +162,6 @@ like($lasterror, qr{bad component exception handler},
 # borkennew is missing a new method (i.e. not a subclass of NCM::Component)
 $error = 0;
 $cmp->{MODULE} = "brokennew";
-ok($cmp->hasFile(), "brokennew module found");
 
 $c = $cmp->_load();
 is($c, undef, "module with broken/missing new method is not loaded");
@@ -182,7 +172,6 @@ like($lasterror, qr{instantiation statement fails},
 # noconfigure is missing a Configure method
 $error = 0;
 $cmp->{MODULE} = "noconfigure";
-ok($cmp->hasFile(), "noconfigure module found");
 
 $c = $cmp->_load();
 is($c, undef, "module with missing Configure method is not loaded");
@@ -198,7 +187,6 @@ like($lasterror, qr{missing the mandatory Configure method},
 
 $error = 0;
 $cmp->{MODULE} = "customcomponent";
-ok($cmp->hasFile(), "customcomponent module found");
 
 $c = $cmp->_load();
 isa_ok($c, "NCM::Component::customcomponent",
