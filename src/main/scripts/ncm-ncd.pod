@@ -5,16 +5,17 @@ package ncm-ncd;
 =head1 NAME
 
 ncm-ncd - Node Configuration Dispatcher
-      of the NCM (Node Configuration Management) subsystem
 
-      quattor toolsuite http://quattor.org
+Part of the NCM (Node Configuration Management) subsystem
+
+quattor toolsuite http://quattor.org
 
 =head1 SYNOPSIS
 
-ncm-ncd --configure   [options] [<component1> [<component2>] ...]
-ncm-ncd --unconfigure [options] component
+    ncm-ncd --configure   [options] [<component1> [<component2>] ...]
+    ncm-ncd --unconfigure [options] component
 
-(See ncm-ncd --help for full list of options with default values.)
+(See C<ncm-ncd --help> for full list of options with default values.)
 
 =head1 DESCRIPTION
 
@@ -34,7 +35,7 @@ B<cdispd>.
 If a dependency is not fulfilled, the B<ncd> exits with an
 appropriate error message and return status.
 
-In case of deinstallation of a component using B<--unconfigure>,
+In case of deinstallation of a component using C<--unconfigure>,
 the B<ncd> is to be called with the component's name as a
 parameter.
 
@@ -211,7 +212,7 @@ overall ncm-ncd run pass if a dependency fails. This option implies
 '--nodeps' and '--autodeps'. Use with care.
 
 A "dependency" is any component that is not requested/specified
- via command line (and added to list of components to process via
+via command line (and added to list of components to process via
 '--autodeps', if any).
 
 (If you do not care about dependencies and just want to avoid errors,
@@ -274,23 +275,14 @@ A colon-seperated list of directories to include in search path for ncm-componen
 =head1 CONFIGURATION FILE
 
 A configuration file can keep site-wide configuration settings. The
-location of the configuration file is defined in the --cfgfile
+location of the configuration file is defined in the C<--cfgfile>
 option. A default configuration file is found in
-/etc/ncm-ncd.conf
+C</etc/ncm-ncd.conf>.
 
 =head1 SIGNAL HANDLING
 
 If a signal is received, the ncm-ncd will try to finish its execution
 gracefully and will report an error (return status: -1), except if
-it was called with the --noaction flag.
-
-=head1 AUTHOR
-
-${author}
-
-=head1 MORE INFORMATION
-
-Visit B<http://quattor.org> for more information on the quattor
-toolsuite.
+it was called with the C<--noaction> flag.
 
 =cut
