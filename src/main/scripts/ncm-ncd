@@ -17,7 +17,9 @@ BEGIN {
 # minimal ENV with minimal PATH
 %ENV = (
     PATH => join(":", qw(/bin /usr/bin /sbin /usr/sbin)),
+    HOME => "/",
 );
+
 # fix umask
 umask (022);
 
