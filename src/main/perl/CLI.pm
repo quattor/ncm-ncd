@@ -44,6 +44,9 @@ sub app_options
         { NAME    => 'list',
           HELP    => 'list existing components and exit' },
 
+        { NAME    => 'graph',
+          HELP    => 'output component dependencies in Graphviz DOT format and exit' },
+
         { NAME    => 'configure',
           HELP    => 'run the configure method on the components (passed as arguments, not values for this option)' },
 
@@ -398,7 +401,7 @@ sub check_options
     $self->info('Dry run, no changes will be performed (--noaction flag set)')
         if ($self->option('noaction'));
 
-    my @exclusive_required = qw(configure unconfigure list report);
+    my @exclusive_required = qw(configure unconfigure list graph report);
     my @used;
     foreach my $option (@exclusive_required) {
         push(@used, $option) if $self->option($option);
@@ -567,7 +570,7 @@ sub action
             $self->error("Failed to report state");
             $self->finish(-1);
         }
-    } elsif ($self->option('list')) {
+    } elsif ($self->option('list') || $self->option('graph')) {
         # Just do the list here
         my $compList = NCD::ComponentProxyList->new($self->getCCMConfig());
         unless (defined $compList) {
@@ -575,7 +578,13 @@ sub action
             $self->error("cannot get component(s)");
             $self->finish(-1);
         }
-        $compList->reportComponents();
+        if ($self->option('list')) {
+            $compList->reportComponents();
+        } elsif ($self->option('graph')) {
+            $compList->reportComponentsGraph();
+        } else {
+            $self->finish(-1);
+        };
         $self->finish(0);
     } elsif ($self->option('unconfigure')) {
         # Sanity check the components passed to unconfigure
