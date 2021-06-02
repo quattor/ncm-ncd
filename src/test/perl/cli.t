@@ -24,6 +24,7 @@ my @baseopts = (
     $apppath,
     '--cache_root', $ppc_cfg->{cache_path},
     '--logdir', 'target',
+    '--cfgfile', 'src/test/resources/ncm-ncd.conf.test',
     );
 
 # GetPermissions is unittested in CCM fetch_profilecache_make_cacheroot.t
