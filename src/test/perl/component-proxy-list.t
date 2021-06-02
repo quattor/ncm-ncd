@@ -11,6 +11,7 @@ use Test::More;
 use Test::Quattor qw(component-proxy-list);
 use NCD::ComponentProxyList qw(get_statefile set_state); # Test the imports
 use CAF::Object;
+use CAF::Path;
 use Test::MockModule;
 use Cwd;
 
@@ -300,22 +301,23 @@ Pass cpl instance as logger instance for function
 # reset unlinked
 @unlinked = ();
 
+my $cafpath = CAF::Path::mkcafpath();
 my $mytestcomp = "mytestcomponent";
 my $relpath = 'target/statefiles';
-ok(! -d $relpath, "No statesfiles dir exists ($relpath)");
+ok(!$cafpath->directory_exists($relpath), "No statesfiles dir exists ($relpath)");
 $this_app->{CONFIG}->set('state', $relpath);
 ok(! defined(get_statefile($cpl, $mytestcomp, $this_app->option('state'))),
    "get_statefile returns undef in case of failure (relpath instead of abspath)");
-ok(! -d $relpath, "states dir not created in case of failure");
+ok(!$cafpath->directory_exists($relpath), "states dir not created in case of failure");
 
 my $abspath = getcwd()."/$relpath";
 my $absstatefile = "$abspath/$mytestcomp";
-ok(! -d $abspath, "No statesfiles dir exists ($abspath)");
+ok(!$cafpath->directory_exists($abspath), "No statesfiles dir exists ($abspath)");
 $this_app->{CONFIG}->set('state', $abspath);
 is(get_statefile($cpl, $mytestcomp, $this_app->option('state')),
    $absstatefile,
    "get_statefile returns expected statefile $absstatefile");
-ok(-d $abspath, "states dir created in case of success");
+ok($cafpath->directory_exists($abspath), "states dir created in case of success");
 
 # test noaction
 $this_app->{CONFIG}->set('noaction', 1);

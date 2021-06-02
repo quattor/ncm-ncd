@@ -1,6 +1,6 @@
 #${PMpre} NCD::CLI${PMpost}
 
-use parent qw(CAF::Application CAF::Reporter CAF::Path);
+use parent qw(CAF::Application CAF::Reporter CAF::Path Exporter);
 
 use CAF::Reporter 16.8.1 qw($LOGFILE);
 use CAF::Lock qw(FORCE_IF_STALE FORCE_ALWAYS);
@@ -8,6 +8,7 @@ use CAF::Object qw (SUCCESS throw_error);
 use EDG::WP4::CCM::CacheManager;
 use EDG::WP4::CCM::Fetch::Config 16.10.0 qw(NOQUATTOR NOQUATTOR_EXITCODE NOQUATTOR_FORCE);
 use EDG::WP4::CCM::Fetch::ProfileCache qw(GetPermissions);
+use NCD::ComponentProxyList qw(get_states);
 
 use Readonly;
 
@@ -15,6 +16,9 @@ use Readonly;
 Readonly my $QUATTOR_LOCKDIR => '/var/lock/quattor';
 Readonly my $NCD_LOGDIR => '/var/log/ncm';
 Readonly my $NCD_CONFIGFILE => '/etc/ncm-ncd.conf';
+Readonly our @SUPPORTED_REPORT_FORMATS => qw(nagios simple);
+
+our @EXPORT_OK = qw(@SUPPORTED_REPORT_FORMATS);
 
 =head1 NAME NCD::CLI
 
@@ -134,6 +138,13 @@ sub app_options
         { NAME    => 'history',
           HELP    => 'Enable history/event tracking',
           DEFAULT => 1 },
+
+        { NAME    => 'report',
+          HELP    => 'Report the component state' },
+
+        { NAME    => 'report-format=s',
+          HELP    => 'Format to use to report the component state (supported '.join(', ', @SUPPORTED_REPORT_FORMATS).')',
+          DEFAULT => 'simple' },
 
         # Advanced options
         { NAME    => 'ignorelock',
@@ -387,18 +398,132 @@ sub check_options
     $self->info('Dry run, no changes will be performed (--noaction flag set)')
         if ($self->option('noaction'));
 
-    unless ($self->option('configure')
-            || $self->option('unconfigure')
-            || $self->option('list'))
-    {
-        $self->error('please specify either configure, unconfigure or list as options');
+    my @exclusive_required = qw(configure unconfigure list report);
+    my @used;
+    foreach my $option (@exclusive_required) {
+        push(@used, $option) if $self->option($option);
+    }
+
+    if (!@used) {
+        $self->error('please specify either ', join(', ', @exclusive_required) ,' as options');
+        $self->finish(-1);
+    } elsif (scalar @used > 1) {
+        $self->error('Exclusive options ', join(', ', @used) ,' cannot be used simultaneously');
         $self->finish(-1);
     }
 
-    if ($self->option('configure') && $self->option('unconfigure')) {
-        $self->error('configure and unconfigure options cannot be used simultaneously');
+    my $state = $self->option('state');
+    if (!$state) {
+        $self->error('No state directory set');
+        $self->finish(-1);
+    } elsif ($state !~ m{^/}) {
+        $self->error("No absolute path for state directory (got $state)");
         $self->finish(-1);
     }
+
+    my $report_format = $self->option('report-format');
+    if (!grep {$_ eq $report_format} @SUPPORTED_REPORT_FORMATS) {
+        $self->error("Unsupported report format $report_format, use of one ".join(', ', @SUPPORTED_REPORT_FORMATS));
+        $self->finish(-1);
+    }
+}
+
+# simple wrapper around print for unittesting
+#   adds newline at the end
+sub _print {
+    shift;
+    print @_;
+    print "\n" if $_[-1] !~ m/\n$/;
+}
+
+=item _report_state_simple
+
+Create basic report for components from hashref C<state> and
+configuration name C<cfgname>.
+
+=cut
+
+sub _report_state_simple
+{
+    my ($self, $state, $cfgname) = @_;
+
+    my $cfgtxt = defined($cfgname) ? " for current active CCM config $cfgname" : '';
+    my $nr = scalar keys %$state;
+    if (%$state) {
+        $self->_print("$nr components with error$cfgtxt");
+        foreach my $comp (sort keys %$state) {
+            my $date = scalar localtime($state->{$comp}->{timestamp});
+            my $msg = $state->{$comp}->{message};
+            chomp($msg);
+            $msg =~ s/\n+/ /g;
+            $msg = $msg eq '' ? '(no message)' : "with message $msg";
+
+            $self->_print("  $comp failed on $date $msg");
+        }
+        $self->finish(-1);
+    } else {
+        $self->_print("No components with error$cfgtxt");
+        $self->finish(0);
+    }
+
+    return SUCCESS;
+}
+
+=item _report_state_nagios
+
+Create report in nagios check format for components from hashref C<state> and
+configuration name C<cfgname>.
+
+=cut
+
+sub _report_state_nagios
+{
+    my ($self, $state, $cfgname) = @_;
+
+    my $nr = scalar keys %$state;
+    my $perfdata = "failed=$nr";
+    if (defined($cfgname)) {
+        $perfdata .= ", version=$cfgname";
+    }
+    my ($ec, $msg);
+    if ($nr) {
+        my @comps = sort keys %$state;
+        $msg = "ERROR $nr components with error: ".join(',', @comps);
+        my $size = length($msg) + length($perfdata) + 3; # 3 for separator ' | '
+        if ($size > 255) {
+            $msg = substr($msg, 0, 255 - 3); # -3 for the ...
+            $msg =~ s/,[^,]*$//;
+            $msg .= "...";
+        }
+        $ec = 2;
+    } else {
+        $msg = "OK $nr components with error";
+        $ec = 0;
+    }
+
+    $self->_print("$msg | $perfdata");
+    $self->finish($ec);
+    return SUCCESS;
+}
+
+=item report_state
+
+Report the state of the components from C<statedir> in C<format>.
+
+=cut
+
+sub report_state
+{
+    my ($self, $statedir, $format) = @_;
+
+    my $state = get_states($self, $statedir);
+    # error reported by get_states
+    return if !defined($state);
+
+    my $method = "_report_state_$format";
+    my $cfgname = $self->{CCM_CONFIG}->getName();
+
+    return $self->$method($state, $cfgname);
 }
 
 =item action
@@ -429,12 +554,20 @@ sub action
         $self->finish(-1);
     }
 
-    # strigified result is the directory path
+    # stringified result is the directory path
     #     this is a tempdir, always CHANGED
     my $run_from = "$dir_result";
     $run_from =~ s/$chroot_pattern//;
 
-    if ($self->option('list')) {
+    if ($self->option('report')) {
+        my $res = $self->report_state($chroot.$self->option('state'), $self->option('report-format'));
+        if ($res) {
+            $self->finish(0);
+        } else {
+            $self->error("Failed to report state");
+            $self->finish(-1);
+        }
+    } elsif ($self->option('list')) {
         # Just do the list here
         my $compList = NCD::ComponentProxyList->new($self->getCCMConfig());
         unless (defined $compList) {

@@ -4,11 +4,12 @@ use CAF::Object qw (SUCCESS throw_error);
 use parent qw(CAF::ReporterMany CAF::Object Exporter);
 use NCD::ComponentProxy;
 use JSON::XS;
-use CAF::Process;
 use CAF::FileWriter;
-use File::Path qw(mkpath);
+use CAF::FileReader;
+use CAF::Path;
+use CAF::Process;
 
-our @EXPORT_OK = qw(get_statefile set_state);
+our @EXPORT_OK = qw(get_statefile set_state get_states);
 
 our $this_app;
 
@@ -743,7 +744,10 @@ sub get_statefile
 
             # the state directory could be volatile
             # only create after sanity/taint check
-            mkpath($statedir) unless -d $statedir;
+            my $cafpath = CAF::Path::mkcafpath(log => $logger);
+            if (! defined($cafpath->directory($statedir))) {
+                $logger->error("Failed to make directory $statedir: $cafpath->{fail}");
+            };
 
             # Must be an absolute path, no shell metacharacters
             return $1;
@@ -806,6 +810,60 @@ sub set_state
     return 1;
 }
 
+# convenience function to return file mtime so we can mock it
+sub _mtime {
+    return (stat($_[0]))[9];
+}
+
+=item get_states
+
+Gather the state information of the components in C<statedir>.
+
+Return hashref with component name as key and state information.
+
+First argument is a C<CAF::Reporter> instance for logging.
+
+=over
+
+=item timestamp (when statefile was created)
+
+=item message
+
+=back
+
+=cut
+
+sub get_states
+{
+    my ($logger, $statedir) = @_;
+
+    my $cafpath = CAF::Path::mkcafpath(log => $logger);
+    if ($cafpath->directory_exists($statedir)) {
+        my $comps = $cafpath->listdir($statedir, file_exists => 1);
+        if ($comps) {
+            $logger->verbose("Found ", scalar @$comps," components in $statedir: ", join(',', @$comps));
+            my %res;
+            foreach my $comp (sort @$comps) {
+                my $fn = "$statedir/$comp";
+                my $fh = CAF::FileReader->new($fn, log => $logger);
+                my $mtime = _mtime($fn);
+                $res{$comp} = {
+                    message => "$fh",
+                    timestamp => $mtime
+                };
+            }
+            return \%res;
+        } else {
+            $logger->error("Failed to return listdir of $statedir: $cafpath->{fail}");
+            return;
+        }
+    } else {
+        # directory does not exist, so ncm-ncd was never used before (eg volatile location)
+        # but then nothing is wrong in principle
+        $logger->verbose("State dir $statedir does not exist, so no components in error");
+        return {};
+    }
+}
 
 =pod
 

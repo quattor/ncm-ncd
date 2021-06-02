@@ -5,6 +5,7 @@ use Test::More;
 use Test::Quattor;
 use Test::Quattor::ProfileCache qw(prepare_profile_cache);
 use NCD::CLI;
+use NCD::ComponentProxyList qw(get_states set_state);
 use Test::MockModule;
 use LC::Exception;
 use CAF::Reporter qw($VERBOSE_LOGFILE);
@@ -23,6 +24,7 @@ my @baseopts = (
     $apppath,
     '--cache_root', $ppc_cfg->{cache_path},
     '--logdir', 'target',
+    '--cfgfile', 'src/test/resources/ncm-ncd.conf.test',
     );
 
 # GetPermissions is unittested in CCM fetch_profilecache_make_cacheroot.t
@@ -63,7 +65,7 @@ is_deeply($Test::Quattor::caf_path->{directory},
 is($this_app->_rep_setup()->{$VERBOSE_LOGFILE}, 0, "verbose_logfile is disabled");
 
 my @allopts = map {$_->{NAME}} @{$this_app->app_options()};
-is(scalar @allopts, 35, "expected number of options");
+is(scalar @allopts, 37, "expected number of options");
 
 my $reportcomps;
 $mock_cpl->mock('reportComponents', sub {my $self = shift; $reportcomps = [map {$_->name()} @{$self->{CLIST}}];});
@@ -103,5 +105,92 @@ like($verb, qr{Perl warning: Test NCD::CLI warning at src/test/perl/cli.t},
    "perl warning logged verbose");
 $mock_cli->unmock('verbose');
 
+# Test report / report-format
+# Also test ComponentProxyList get_states here
+$this_app = NCD::CLI->new(@baseopts, '--debug', 5, '--report');
+isa_ok($this_app, 'NCD::CLI', 'NCD::CLI created (for root user) 1');
+is($this_app->option('report-format'), 'simple', "simple is default report format");
+
+my $this_appn = NCD::CLI->new(@baseopts, '--debug', 5, '--report', '--report-format', 'nagios');
+isa_ok($this_appn, 'NCD::CLI', 'NCD::CLI created (for root user) 2');
+is($this_appn->option('report-format'), 'nagios', "nagios report format");
+
+my $statedir = $this_app->option('state');
+is($statedir, "/var/run/quattor-components", "expected default statedir value (from config file)");
+
+my @pri;
+my $mock_print = sub {
+    my $self = shift;
+    push(@pri, \@_);
+};
+$mock_cli->mock('_print', $mock_print);
+
+# missing statedir
+@pri = qw();
+ok(!$this_app->directory_exists($statedir), "statedir $statedir does not exist 1");
+is_deeply(get_states($this_app, $statedir), {}, "get_states on missing dir returns empty hashref");
+
+eval {$this_app->main($ec);};
+like($@, qr{^exit 0 at}, "report exited with success 1");
+ok(!$this_app->directory_exists($statedir), "statedir $statedir does not exist 2");
+is($pri[-1]->[0], 'No components with error', "No state directory gives reported componets are all ok");
+
+# empty statedir
+ok($this_app->directory($statedir), "statedir created");
+ok($this_app->directory_exists($statedir), "statedir $statedir does exist 1");
+is_deeply(get_states($this_app, $statedir), {}, "get_states on empty dir returns empty hashref");
+
+@pri = qw();
+eval {$this_app->main($ec);};
+like($@, qr{^exit 0 at}, "report exited with success 2");
+ok($this_app->directory_exists($statedir), "statedir $statedir does exist 2");
+is($pri[-1]->[0], 'No components with error', "Empty state directory gives reported componets are all ok");
+
+@pri = qw();
+eval {$this_appn->main($ec);};
+like($@, qr{^exit 0 at}, "report exited with success 2");
+is($pri[-1]->[0], 'OK 0 components with error | failed=0', "Empty state directory gives reported componets are all ok");
+
+# 2 failed comps
+$mock_cpl->mock('_mtime', sub {return $_[0] =~ m/woohaa/ ? 123456789 : 987654321});
+set_state($this_app, 'woohaa', 'woopsie', $statedir);
+set_state($this_app, 'ouch', '', $statedir);
+is_deeply(get_states($this_app, $statedir), {
+    woohaa => {
+        message => "woopsie\n",
+        timestamp => 123456789,
+    },
+    ouch => {
+        message => "\n",
+        timestamp => 987654321,
+    }
+}, "get_states on 2 failed components returns hashref");
+
+@pri = qw();
+eval {$this_app->main($ec);};
+like($@, qr{^exit -1 at}, "report exited with failure");
+ok($this_app->directory_exists($statedir), "statedir $statedir does exist 3");
+diag explain \@pri;
+is($pri[-3]->[0], '2 components with error', "Main report is 2 failed components");
+like($pri[-2]->[0], qr{^  ouch failed on .*? 2001 \(no message\)}, "failed ouch component");
+like($pri[-1]->[0], qr{^  woohaa failed on .*? 1973 with message woopsie}, "failed woohaa component");
+
+@pri = qw();
+eval {$this_appn->main($ec);};
+like($@, qr{^exit 2 at}, "nagios report exited with failure 1");
+is($pri[-1]->[0], "ERROR 2 components with error: ouch,woohaa | failed=2", "nagios format failed components");
+
+# test nagios format message shortening
+foreach my $i (1..50) {
+    set_state($this_app, "compo$i", '', $statedir);
+}
+@pri = qw();
+eval {$this_appn->main($ec);};
+like($@, qr{^exit 2 at}, "nagios report exited with failure 2");
+my $fcomps = join(",", (sort map {"compo$_"} (1..3,10..33)));
+is($pri[-1]->[0], "ERROR 52 components with error: $fcomps... | failed=52", "nagios format failed components (shortening)");
+
+
+#diag explain \@pri;
 
 done_testing();
