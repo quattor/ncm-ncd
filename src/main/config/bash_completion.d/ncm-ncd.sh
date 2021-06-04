@@ -12,7 +12,7 @@ unset _ncm_ncd_ccm_bashcompletion_fn
 
 _quattor_ncm_ncd_default_options=(debug help quiet verbose version)
 
-_quattor_ncm_ncd_options=(all allowbrokencomps autodeps cache_root cfgfile check-noquattor chroot configure facility force-quattor forcelock history history-instances ignore-errors-from-dependencies ignorelock include list log_group_readable log_world_readable logdir logpid multilog noaction nodeps post-hook post-hook-timeout pre-hook pre-hook-timeout report report-format retries skip state timeout unconfigure useprofile verbose_logfile)
+_quattor_ncm_ncd_options=(all allowbrokencomps autodeps cache_root cfgfile check-noquattor chroot configure facility force-quattor forcelock graph history history-instances ignore-errors-from-dependencies ignorelock include list log_group_readable log_world_readable logdir logpid multilog noaction nodeps post-hook post-hook-timeout pre-hook pre-hook-timeout report report-format retries skip state timeout unconfigure useprofile verbose_logfile)
 
 # boolean options which are true by default
 _quattor_ncm_ncd_no_options=(no-autodeps no-check-noquattor)

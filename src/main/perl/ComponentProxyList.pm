@@ -58,6 +58,71 @@ sub reportComponents
     return SUCCESS;
 }
 
+sub reportComponentsGraph
+{
+    my $self = shift;
+
+    $self->report('digraph {');
+    $self->report('    graph [rankdir=LR bgcolor=black ranksep=2]');
+    $self->report('    node [color=white fontcolor=white shape=rect style=rounded]');
+    $self->report('    edge [color=gray25 style=dashed]');
+
+    $self->report('');
+
+    # List all components
+    # This ensures they all end up on the graph, even if they do not have specific dependencies
+    foreach my $comp (@{$self->{'CLIST'}}) {
+        $self->report(
+            sprintf(
+                "    %s",
+                $comp->name() ,
+            )
+        );
+    }
+
+    $self->report('');
+
+    foreach my $comp (@{$self->{'CLIST'}}) {
+        # Render pre-dependencies with an inverted arrow
+        if (@{$comp->getPreDependencies()}) {
+            $self->report(
+                sprintf(
+                    "    %s -> %s [arrowhead=inv]",
+                    join(',', @{$comp->getPreDependencies()}),
+                    $comp->name()
+                )
+            );
+        }
+        # Render post-dependencies
+        if (@{$comp->getPostDependencies()}) {
+            $self->report(
+                sprintf(
+                    "    %s -> %s",
+                    $comp->name(),
+                    join(',', @{$comp->getPostDependencies()})
+                )
+            );
+        };
+    }
+
+    $self->report('');
+
+    # Render the potential execution order for all components
+    # Highlight the first and last components for clarity
+    my $sortedList = $self->_sortComponents($self->{CLIST});
+    $self->report(sprintf("    %s [color=green shape=ellipse]", @{$sortedList}[0]->name()));
+    $self->report(sprintf("    %s [color=red shape=octagon style=solid]", @{$sortedList}[-1]->name()));
+    $self->report(
+        sprintf(
+            "    %s [color=yellow constraint=false style=solid]",
+            join(' -> ', map($_->name(), @{$sortedList}))
+        )
+    );
+
+    $self->report('}');
+
+    return SUCCESS;
+}
 
 # common code for pre/post hooks
 # Run the pre/post-config $hook, possibly timing out after $timeout seconds

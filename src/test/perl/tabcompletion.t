@@ -163,7 +163,7 @@ is_deeply(bash_split_opts('_quattor_ncm_ncd_default_options'),
           "_quattor_ncm_ncd_default_options");
 
 Readonly::Array my @OPTIONS => qw(all allowbrokencomps autodeps cache_root cfgfile
-check-noquattor chroot configure facility force-quattor forcelock history history-instances
+check-noquattor chroot configure facility force-quattor forcelock graph history history-instances
 ignore-errors-from-dependencies ignorelock include list
 log_group_readable log_world_readable logdir logpid multilog noaction nodeps
 post-hook post-hook-timeout pre-hook pre-hook-timeout report report-format retries

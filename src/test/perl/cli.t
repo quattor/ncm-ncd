@@ -65,7 +65,7 @@ is_deeply($Test::Quattor::caf_path->{directory},
 is($this_app->_rep_setup()->{$VERBOSE_LOGFILE}, 0, "verbose_logfile is disabled");
 
 my @allopts = map {$_->{NAME}} @{$this_app->app_options()};
-is(scalar @allopts, 37, "expected number of options");
+is(scalar @allopts, 38, "expected number of options");
 
 my $reportcomps;
 $mock_cpl->mock('reportComponents', sub {my $self = shift; $reportcomps = [map {$_->name()} @{$self->{CLIST}}];});
