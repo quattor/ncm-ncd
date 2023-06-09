@@ -123,6 +123,9 @@
                 </sources>
               </mapping>
             </mappings>
+            <requires>
+              <require>logrotate</require>
+            </requires>
           </configuration>
         </plugin>
       </plugins>
