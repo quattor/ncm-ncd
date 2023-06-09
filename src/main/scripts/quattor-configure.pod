@@ -1,0 +1,17 @@
+package quattor-configure;
+
+=pod
+
+=head1 NAME
+
+quattor-configure - wrapper for C<ncm-ncd --configure>
+
+Part of the NCM (Node Configuration Management) subsystem
+
+quattor toolsuite http://quattor.org
+
+=head1 SEE ALSO
+
+ncm-ncd(8)
+
+=cut
