@@ -1,0 +1,42 @@
+name: Run Tests
+
+on: [push, pull_request]
+
+jobs:
+  runtests:
+    runs-on: ubuntu-latest
+    container: rockylinux:8
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Determine hash for caching key
+      id: cachekeystep
+      run: echo "pomcachekey=${{ hashFiles('pom.xml') }}" >> $GITHUB_ENV
+    - name: set up dependencies
+      run: |
+        dnf -y install dnf-plugins-core
+        dnf config-manager --set-enabled appstream
+        dnf config-manager --set-enabled powertools
+        dnf -y install epel-release \
+          http://yum.quattor.org/devel/quattor-yum-repo-2-1.noarch.rpm
+        dnf -y install maven perl-Test-Quattor panc libselinux-utils wget perl-Test-Harness
+    - name: set up template library core from git master
+      run: |
+        cd /tmp
+        # install library core in /tmp, tests need it
+        wget -O template-library-core-master.tar.gz https://codeload.github.com/quattor/template-library-core/tar.gz/master
+        tar -xvzf template-library-core-master.tar.gz
+        cd -
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: /tmp/m2
+        key: ${{ runner.os }}-m2-${{ env.pomcachekey }}
+        restore-keys: ${{ runner.os }}-m2-
+    - name: run tests
+      run: |
+        source /usr/bin/mvn_test.sh
+        mvn_test
+      env:
+        QUATTOR_TEST_TEMPLATE_LIBRARY_CORE: /tmp/template-library-core-master
+        MVN_ARGS: -Dmaven.repo.local=/tmp/m2

@@ -25,12 +25,12 @@ $mock_cli->mock('_get_uid', 0);
 # Do not mock the renderer, use the one from CCM
 # try source relative to current path (eg on jenkins) and default install
 my $tt_ccm = abs_path(getcwd().'/../CCM/src/main/resources');
-ok(-d $tt_ccm, "Did not find the CCM TT directory $tt_ccm");
+ok(-d $tt_ccm, "Did not find the CCM TT directory $tt_ccm") if defined $tt_ccm;
 
 my $default_install = '/usr/share/templates/quattor';
 
 my @paths;
-if (-d $tt_ccm) {
+if (defined $tt_ccm and -d $tt_ccm) {
     my $local_tt = 'target/TT';
     my $local_tt_ccm = "$local_tt/CCM";
     mkdir($local_tt);
