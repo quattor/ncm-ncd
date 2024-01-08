@@ -125,6 +125,7 @@
             </mappings>
             <requires>
               <require>logrotate</require>
+              <require>perl</require>
             </requires>
           </configuration>
         </plugin>
