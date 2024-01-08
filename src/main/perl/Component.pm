@@ -5,6 +5,7 @@ use LC::Sysinfo;
 use CAF::History qw($IDX);
 use CAF::Reporter qw($HISTORY);
 use EDG::WP4::CCM::Path 16.8.0;
+use Module::Load;
 use parent qw(Exporter CAF::Object);
 
 our ($this_app, @EXPORT, $NoAction, $SYSNAME, $SYSVERS);
@@ -311,8 +312,7 @@ sub Configure
 {
     my ($self, $config) = @_;
 
-    $self->error('Configure() method not implemented by component');
-    return;
+    return $self->_redirect("Configure", $config);
 }
 
 =item Unconfigure($config): boolean
@@ -326,8 +326,7 @@ sub Unconfigure
 {
     my ($self, $config) = @_;
 
-    $self->error('Unconfigure() method not implemented by component');
-    return;
+    return $self->_redirect("Unconfigure", $config);
 }
 
 
@@ -390,6 +389,141 @@ sub _initialize
 
     return SUCCESS;
 }
+
+=item _redirect
+
+Support component redirection: allow a component to switch
+to a child module based on configuration information.
+
+The component needs a C<REDIRECT> readonly hashref with keys
+
+=over
+
+=item name (mandatory): element name that will be used to lookup
+the child module name in the component configuration. If no value is found,
+and no default is defined, an error is reported and C<_redirect> returns.
+
+=item default (optional): default child module value
+
+=item lower (optional):  when true, no capitalisation of the
+component namespace when generating the child module package name.
+(This does not affect the child module name.)
+
+=back
+
+Caveats
+
+=over
+
+=item NoActionSupported: this is declared by the (parent) component
+and applies for all redirections.
+
+=item C<LC::Exception> context (C<EC>): this is declared
+by the (parent) component, be careful when defining another one in the
+redirections.
+
+=back
+
+Example spma component has 'packager' configuration to switch between
+C<yum>, C<yumng>, C<ips> and C<apt>.
+
+The simplified implementation is as follows:
+
+The C<spma> component package contains
+    package NCM::Component::spma;
+    ...
+    use parent qw(NCM::Component);
+    use Readonly;
+    Readonly our $REDIRECT => {
+        name => 'packager',
+        lower => 1,
+        default => 'yum',
+    }
+
+This means that the module to use is based on the value
+of the C<packager> element in the component tree (based on
+C<prefix()>; in this case C</software/components/spma/packager>).
+In none is defined, the default C<yum> value is used.
+
+The actual module that is loaded from namespace based on the package name,
+with the packagename capitalised.
+In this example, by default this would be in C<NCM::Component::Spma>.
+However, with the C<lower> REDIRECT value true, the capitalisation is
+not performed and the resulting package is C<NCM::Component::spma::yum>.
+
+=cut
+
+sub _redirect
+{
+    my ($self, $method, $config) = @_;
+
+    my $whoami = ref($self);
+
+    my $redirect;
+
+    # TODO: prevent loop?
+    local $@;
+    eval {
+        my $varname = $whoami."::REDIRECT";
+        no strict 'refs';
+        $redirect = ${$varname};
+        use strict 'refs';
+    };
+    if ($@) {
+        $self->verbose("No REDIRECT defined for $whoami: $@");
+    }
+
+    if ($redirect) {
+        my $elname = $redirect->{name};
+        if (!defined($elname)) {
+            $self->error("Invalid REDIRECT for $whoami: missing name");
+            return;
+        }
+
+        # redirect current component
+        # based on spma.pm code call_entry_point
+        my $tree = $config->getTree($self->prefix());
+        my $childname = $tree->{$elname} || $redirect->{default};
+        if (!$childname) {
+            $self->error("No REDIRECT childname for $whoami found: ",
+                         "no name config (element $elname) and no REDIRECT default set");
+            return;
+        }
+
+        my @packagename = split(/::/, $whoami);
+        $packagename[-1] = ucfirst($packagename[-1]) if ! $redirect->{lower};
+        push(@packagename, $childname);
+
+        my $childpackagename = join('::', @packagename);
+
+        local $@;
+        my @warns;
+        eval {
+            local $SIG{__WARN__} = sub { push(@warns, $_[0]); };
+            load $childpackagename;
+        };
+        if ($@) {
+            $self->error("REDIRECT bad Perl code in $childpackagename: $@");
+            return;
+        }
+
+        # no real point in reporting the warnings on error
+        # and we must be sure that $@ does not get redefined during $self->warn
+        foreach my $warn (@warns) {
+            $self->warn("REDIRECT warning during loading of package $childpackagename: $warn");
+        }
+
+        $self->verbose("Redirecting to $childname (package $childpackagename)");
+        bless($self, $childpackagename);
+
+        return $self->$method($config);
+    } else {
+        # Default: nothing works
+        $self->error("$method() method not implemented by component");
+        return;
+    }
+}
+
 
 =back
 
