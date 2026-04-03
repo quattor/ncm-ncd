@@ -172,8 +172,8 @@ like($@, qr{^exit -1 at}, "report exited with failure");
 ok($this_app->directory_exists($statedir), "statedir $statedir does exist 3");
 diag explain \@pri;
 is($pri[-3]->[0], '2 components with error', "Main report is 2 failed components");
-#like($pri[-2]->[0], qr{^  ouch failed on .*? 2001 \(no message\)}, "failed ouch component");
-#like($pri[-1]->[0], qr{^  woohaa failed on .*? 1973 with message woopsie}, "failed woohaa component");
+like($pri[-2]->[0], qr{^  ouch failed on .*? 2001 \(no message\)}, "failed ouch component");
+like($pri[-1]->[0], qr{^  woohaa failed on .*? 1973 with message woopsie}, "failed woohaa component");
 
 @pri = qw();
 eval {$this_appn->main($ec);};
